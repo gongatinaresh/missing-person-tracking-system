@@ -1,65 +1,66 @@
 import streamlit as st
-import pickle
-from pathlib import Path
-import streamlit_authenticator as stauth
 import pandas as pd
 import os
-import cv2
-
-# Email
 import smtplib
 from email.message import EmailMessage
 
 # -------------------------------------------------
-# Page Config
+# PAGE CONFIG
 # -------------------------------------------------
 st.set_page_config(page_title="Missing Persons Tracking System")
-
-# -------------------------------------------------
-# Title
-# -------------------------------------------------
 st.title("🧭 Missing Persons Tracking System")
 
 # -------------------------------------------------
-# Load Login Info
+# USER FILE
 # -------------------------------------------------
-with open("login_info.txt", "r") as f:
-    lines = f.readlines()
+USER_FILE = "users.csv"
 
-names = eval(lines[0].split("=")[1].strip())
-usernames = eval(lines[1].split("=")[1].strip())
-
-file_path = Path(__file__).parent / "hashed_pw.pkl"
-with file_path.open("rb") as file:
-    hashed_passwords = pickle.load(file)
-
-credentials = {
-    "usernames": {
-        usernames[i]: {"name": names[i], "password": hashed_passwords[i]}
-        for i in range(len(usernames))
-    }
-}
-
-authenticator = stauth.Authenticate(
-    credentials,
-    "missing_person_app",
-    "abcdef",
-    cookie_expiry_days=30
-)
-
-name, authentication_status, username = authenticator.login("Login")
-
-if authentication_status:
-    st.success(f"Welcome {name}")
-
-elif authentication_status is False:
-    st.error("Username/password incorrect")
-
+if os.path.exists(USER_FILE):
+    users = pd.read_csv(USER_FILE)
 else:
-    st.warning("Please login")
+    users = pd.DataFrame(columns=["name", "username", "password"])
 
 # -------------------------------------------------
-# Email Function
+# LOGIN / REGISTER MENU
+# -------------------------------------------------
+menu = st.sidebar.selectbox("Menu", ["Login", "Register"])
+
+# ---------------- REGISTER ----------------
+if menu == "Register":
+    st.subheader("Create Account")
+
+    name = st.text_input("Name")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Register"):
+        if username in users["username"].values:
+            st.error("Username already exists")
+        else:
+            new_user = pd.DataFrame([[name, username, password]],
+                                    columns=["name", "username", "password"])
+            users = pd.concat([users, new_user], ignore_index=True)
+            users.to_csv(USER_FILE, index=False)
+            st.success("Account created successfully ✅")
+
+# ---------------- LOGIN ----------------
+elif menu == "Login":
+    st.subheader("Login")
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        user = users[(users["username"] == username) & (users["password"] == password)]
+
+        if not user.empty:
+            st.session_state["user"] = username
+            st.success("Login successful 🎉")
+        else:
+            st.error("Invalid credentials")
+
+# -------------------------------------------------
+# EMAIL FUNCTION
 # -------------------------------------------------
 def send_email(to_email, subject, body, image_path=None):
     try:
@@ -73,7 +74,6 @@ def send_email(to_email, subject, body, image_path=None):
         msg["From"] = sender_email
         msg["To"] = to_email
 
-        # attach image
         if image_path and os.path.exists(image_path):
             with open(image_path, "rb") as img:
                 msg.add_attachment(
@@ -97,19 +97,16 @@ def send_email(to_email, subject, body, image_path=None):
 # -------------------------------------------------
 # AFTER LOGIN
 # -------------------------------------------------
-if st.session_state.get("authentication_status"):
+if "user" in st.session_state:
 
-    st.success(f"Welcome {st.session_state['name']}")
-    authenticator.logout("Logout", "sidebar")
+    st.success(f"Welcome {st.session_state['user']}")
 
     menu = st.selectbox(
         "Select Option",
         ["Report Missing Person", "View Reports", "Live Detection"]
     )
 
-# -------------------------------------------------
-# REPORT
-# -------------------------------------------------
+# ---------------- REPORT ----------------
     if menu == "Report Missing Person":
 
         st.header("➕ Report Missing Person")
@@ -156,9 +153,7 @@ if st.session_state.get("authentication_status"):
             else:
                 st.error("Fill all fields")
 
-# -------------------------------------------------
-# VIEW REPORTS
-# -------------------------------------------------
+# ---------------- VIEW ----------------
     elif menu == "View Reports":
 
         st.header("📋 Reports")
@@ -174,12 +169,10 @@ if st.session_state.get("authentication_status"):
         else:
             st.warning("No data")
 
-# -------------------------------------------------
-# LIVE DETECTION (SIMPLIFIED)
-# -------------------------------------------------
+# ---------------- DETECTION ----------------
     elif menu == "Live Detection":
 
-        st.header("🎥 Live Detection (Demo Version)")
+        st.header("🎥 Live Detection")
 
         if os.path.exists("missing_data.csv"):
 
@@ -187,7 +180,6 @@ if st.session_state.get("authentication_status"):
 
             detected_names = set()
 
-            # simulate detection
             for _, row in df.iterrows():
 
                 try:
@@ -201,14 +193,13 @@ if st.session_state.get("authentication_status"):
                         subject = f"🔍 AI Alert: {name} Detected"
 
                         body = f"""
-Live Camera Detection Alert
+Live Detection Alert
 
 Name: {name}
 Location: {row.get("Location")}
 Phone: {row.get("Phone Number")}
 """
 
-                        # send emails
                         if row.get("Admin Email"):
                             send_email(row.get("Admin Email"), subject, body)
 
@@ -221,12 +212,5 @@ Phone: {row.get("Phone Number")}
         else:
             st.warning("No data available")
 
-
-# -------------------------------------------------
-# LOGIN FAIL
-# -------------------------------------------------
-elif st.session_state.get("authentication_status") is False:
-    st.error("Username/password incorrect")
-
 else:
-    st.warning("Please login")
+    st.warning("Please login or register")
