@@ -4,24 +4,21 @@ from pathlib import Path
 import streamlit_authenticator as stauth
 import pandas as pd
 import os
-from utils import save_admin_data
-
-import smtplib
-from email.message import EmailMessage
 import cv2
 
+# Email
+import smtplib
+from email.message import EmailMessage
 
 # -------------------------------------------------
 # Page Config
 # -------------------------------------------------
 st.set_page_config(page_title="Missing Persons Tracking System")
 
-
 # -------------------------------------------------
 # Title
 # -------------------------------------------------
 st.title("🧭 Missing Persons Tracking System")
-
 
 # -------------------------------------------------
 # Load Login Info
@@ -43,15 +40,19 @@ credentials = {
     }
 }
 
-authenticator = stauth.Authenticate(credentials, "missing_persons_app", "abcdef", 30)
-authenticator.login("Login", "main")
+authenticator = stauth.Authenticate(
+    credentials,
+    "missing_person_app",
+    "abcdef",
+    cookie_expiry_days=30
+)
 
+authenticator.login("Login", "main")
 
 # -------------------------------------------------
 # Email Function
 # -------------------------------------------------
 def send_email(to_email, subject, body, image_path=None):
-
     try:
         sender_email = st.secrets["EMAIL"]
         app_password = st.secrets["EMAIL_PASSWORD"]
@@ -63,6 +64,7 @@ def send_email(to_email, subject, body, image_path=None):
         msg["From"] = sender_email
         msg["To"] = to_email
 
+        # attach image
         if image_path and os.path.exists(image_path):
             with open(image_path, "rb") as img:
                 msg.add_attachment(
@@ -84,119 +86,112 @@ def send_email(to_email, subject, body, image_path=None):
 
 
 # -------------------------------------------------
-# After Login
+# AFTER LOGIN
 # -------------------------------------------------
 if st.session_state.get("authentication_status"):
 
     st.success(f"Welcome {st.session_state['name']}")
     authenticator.logout("Logout", "sidebar")
 
-    page = st.sidebar.radio(
-        "Menu",
-        ["Report Missing Person", "Reports from Users", "Live Camera Detection"]
+    menu = st.selectbox(
+        "Select Option",
+        ["Report Missing Person", "View Reports", "Live Detection"]
     )
 
-
 # -------------------------------------------------
-# Report Missing Person
+# REPORT
 # -------------------------------------------------
-    if page == "Report Missing Person":
+    if menu == "Report Missing Person":
 
         st.header("➕ Report Missing Person")
 
-        person_name = st.text_input("Name")
-        person_image = st.file_uploader("Upload Image", type=["jpg", "jpeg", "png"])
-        contact_number = st.text_input("Phone Number")
+        name = st.text_input("Name")
+        image = st.file_uploader("Upload Image")
+        phone = st.text_input("Phone Number")
         age = st.number_input("Age", min_value=1)
         admin_email = st.text_input("Admin Email")
         family_email = st.text_input("Family Email")
-        location = st.text_input("Last Seen Location")
+        location = st.text_input("Location")
 
-        if st.button("Submit Report"):
+        if st.button("Submit"):
 
-            if all([person_name, person_image, contact_number, age, admin_email, family_email, location]):
+            if all([name, image, phone, age, admin_email, family_email, location]):
 
-                img_path = save_admin_data(
-                    person_image,
-                    person_name,
-                    age,
-                    contact_number,
-                    family_email,
-                    location,
-                    admin_email
-                )
+                os.makedirs("data", exist_ok=True)
+                file_path = f"data/{name}.jpg"
 
-                st.image(img_path, caption="Saved Image")
-                st.success("Missing person report saved")
+                with open(file_path, "wb") as f:
+                    f.write(image.read())
+
+                data = {
+                    "Name": name,
+                    "Image Path": file_path,
+                    "Phone Number": phone,
+                    "Location": location,
+                    "Admin Email": admin_email,
+                    "Family Email": family_email
+                }
+
+                csv_file = "missing_data.csv"
+
+                if os.path.exists(csv_file):
+                    df = pd.read_csv(csv_file)
+                    df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+                else:
+                    df = pd.DataFrame([data])
+
+                df.to_csv(csv_file, index=False)
+
+                st.success("Saved Successfully ✅")
 
             else:
-                st.error("Please fill all fields")
-
+                st.error("Fill all fields")
 
 # -------------------------------------------------
-# Reports
+# VIEW REPORTS
 # -------------------------------------------------
-    elif page == "Reports from Users":
+    elif menu == "View Reports":
 
         st.header("📋 Reports")
 
-        csv_path = os.path.join("data", "admin_data", "missing_data.csv")
-
-        if os.path.isfile(csv_path):
-            df = pd.read_csv(csv_path, dtype=str)
+        if os.path.exists("missing_data.csv"):
+            df = pd.read_csv("missing_data.csv")
             st.dataframe(df)
+
+            if st.button("Clear Reports"):
+                os.remove("missing_data.csv")
+                st.success("Cleared ✅")
+
         else:
-            st.warning("No reports found")
-
+            st.warning("No data")
 
 # -------------------------------------------------
-# LIVE CAMERA DETECTION (MAIN FEATURE 🚀)
+# LIVE DETECTION (SIMPLIFIED)
 # -------------------------------------------------
-    elif page == "Live Camera Detection":
+    elif menu == "Live Detection":
 
-        st.header("📷 Live Camera Detection (CCTV Style)")
+        st.header("🎥 Live Detection (Demo Version)")
 
-        run = st.checkbox("Start Camera")
+        if os.path.exists("missing_data.csv"):
 
-        FRAME_WINDOW = st.image([])
+            df = pd.read_csv("missing_data.csv")
 
-        camera = cv2.VideoCapture(0)
+            detected_names = set()
 
-        csv_path = os.path.join("data", "admin_data", "missing_data.csv")
+            # simulate detection
+            for _, row in df.iterrows():
 
-        detected_names = set()
+                try:
+                    name = row.get("Name")
 
-        if run:
+                    if name not in detected_names:
+                        detected_names.add(name)
 
-            while True:
-                ret, frame = camera.read()
+                        st.success(f"🎉 Detected: {name}")
 
-                if not ret:
-                    st.error("Camera not working")
-                    break
+                        subject = f"🔍 AI Alert: {name} Detected"
 
-                FRAME_WINDOW.image(frame, channels="BGR")
-
-                temp_path = "live.jpg"
-                cv2.imwrite(temp_path, frame)
-
-                if os.path.isfile(csv_path):
-
-                    df = pd.read_csv(csv_path, dtype=str)
-
-                    for _, row in df.iterrows():
-
-                        try:
-                             name = row.get("Name")
-
-                             if name not in detected_names:
-                                detected_names.add(name)
-
-                                st.success(f"🚨 Detected: {name}")
-
-                                subject = f"🔎 AI Surveillance Alert: {name} Detected"
-
-                                body = f"""
+                        body = f"""
 Live Camera Detection Alert
 
 Name: {name}
@@ -204,18 +199,23 @@ Location: {row.get("Location")}
 Phone: {row.get("Phone Number")}
 """
 
-                                    send_email(row.get("Admin Email"), subject, body, temp_path)
-                                    send_email(row.get("Family Email"), subject, body, temp_path)
+                        # send emails
+                        if row.get("Admin Email"):
+                            send_email(row.get("Admin Email"), subject, body)
 
-                                cv2.putText(frame, name, (50, 50),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        if row.get("Family Email"):
+                            send_email(row.get("Family Email"), subject, body)
 
-                                break
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
-                        except:
-                            pass
+        else:
+            st.warning("No data available")
 
 
+# -------------------------------------------------
+# LOGIN FAIL
+# -------------------------------------------------
 elif st.session_state.get("authentication_status") is False:
     st.error("Username/password incorrect")
 
