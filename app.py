@@ -47,12 +47,12 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-name, authentication_status, username = authenticator.login("Login", "sidebar")
+name, authentication_status, username = authenticator.login("Login")
 
-if authentication_status == True:
+if authentication_status:
     st.success(f"Welcome {name}")
 
-elif authentication_status == False:
+elif authentication_status is False:
     st.error("Username/password incorrect")
 
 else:
