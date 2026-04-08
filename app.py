@@ -5,7 +5,6 @@ import streamlit_authenticator as stauth
 import pandas as pd
 import os
 from utils import save_admin_data
-from deepface import DeepFace
 
 import smtplib
 from email.message import EmailMessage
@@ -188,24 +187,16 @@ if st.session_state.get("authentication_status"):
                     for _, row in df.iterrows():
 
                         try:
-                            result = DeepFace.verify(
-                                img1_path=temp_path,
-                                img2_path=row["Image Path"],
-                                enforce_detection=False
-                            )
+                             name = row.get("Name")
 
-                            if result["verified"]:
+                             if name not in detected_names:
+                                detected_names.add(name)
 
-                                name = row.get("Name")
+                                st.success(f"🚨 Detected: {name}")
 
-                                if name not in detected_names:
-                                    detected_names.add(name)
+                                subject = f"🔎 AI Surveillance Alert: {name} Detected"
 
-                                    st.success(f"🚨 Detected: {name}")
-
-                                    subject = f"🔎 AI Surveillance Alert: {name} Detected"
-
-                                    body = f"""
+                                body = f"""
 Live Camera Detection Alert
 
 Name: {name}
