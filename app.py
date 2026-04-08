@@ -18,7 +18,7 @@ USER_FILE = "users.csv"
 if os.path.exists(USER_FILE):
     users = pd.read_csv(USER_FILE)
 else:
-    users = pd.DataFrame(columns=["name", "username", "password"])
+    users = pd.DataFrame(columns=["username", "password"])
 
 # -------------------------------------------------
 # LOGIN / REGISTER MENU
@@ -29,7 +29,6 @@ menu = st.sidebar.selectbox("Menu", ["Login", "Register"])
 if menu == "Register":
     st.subheader("Create Account")
 
-    name = st.text_input("Name")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
 
@@ -37,8 +36,8 @@ if menu == "Register":
         if username in users["username"].values:
             st.error("Username already exists")
         else:
-            new_user = pd.DataFrame([[name, username, password]],
-                                    columns=["name", "username", "password"])
+            new_user = pd.DataFrame([[username, password]],
+                                    columns=["username", "password"])
             users = pd.concat([users, new_user], ignore_index=True)
             users.to_csv(USER_FILE, index=False)
             st.success("Account created successfully ✅")
