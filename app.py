@@ -47,7 +47,16 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-authenticator.login("Login", location="main")
+name, authentication_status, username = authenticator.login("Login", "sidebar")
+
+if authentication_status == True:
+    st.success(f"Welcome {name}")
+
+elif authentication_status == False:
+    st.error("Username/password incorrect")
+
+else:
+    st.warning("Please login")
 
 # -------------------------------------------------
 # Email Function
