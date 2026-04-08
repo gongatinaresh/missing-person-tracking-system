@@ -47,7 +47,7 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-authenticator.login("Login", "main")
+authenticator.login("Login", location="main")
 
 # -------------------------------------------------
 # Email Function
