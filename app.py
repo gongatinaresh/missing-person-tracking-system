@@ -52,8 +52,22 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-# 🔥 FIXED HERE
-authenticator.login("Login", "sidebar")
+# -------------------------------------------------
+# CENTER LOGIN
+# -------------------------------------------------
+col1, col2, col3 = st.columns([1,2,1])
+
+with col2:
+    name, authentication_status, username = authenticator.login("Login", "main")
+
+if authentication_status:
+    st.success(f"Welcome {name}")
+
+elif authentication_status is False:
+    st.error("Username/password incorrect")
+
+else:
+    st.warning("Please login")
 
 # -------------------------------------------------
 # Email Function
@@ -86,7 +100,6 @@ def send_email(to_email, subject, body):
 # -------------------------------------------------
 if st.session_state.get("authentication_status"):
 
-    st.success(f"Welcome {st.session_state['name']}")
     authenticator.logout("Logout", "sidebar")
 
     menu = st.selectbox(
@@ -168,7 +181,6 @@ if st.session_state.get("authentication_status"):
 
         st.header("🎥 Live Camera Detection + Matching")
 
-        # ---------- MATCH FUNCTION ----------
         def match_faces(img1, img2):
             try:
                 img1 = cv2.resize(img1, (100, 100))
@@ -178,13 +190,11 @@ if st.session_state.get("authentication_status"):
             except:
                 return False
 
-        # ---------- LOAD DATA ----------
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
         else:
             df = None
 
-        # ---------- CAMERA CLASS ----------
         class VideoTransformer(VideoTransformerBase):
             def __init__(self):
                 self.detected = set()
