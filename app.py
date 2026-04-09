@@ -199,7 +199,8 @@ Phone: {row.get("Phone Number")}
         else:
             st.warning("No data available")
 
-# your full app code above...
+
+    # your full app code above...
 
 # -------------------------------------------------
 # FOOTER (ALWAYS LAST)
