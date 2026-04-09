@@ -255,12 +255,3 @@ Phone: {row.get("Phone Number")}
             key="camera",
             video_transformer_factory=VideoTransformer
         )
-
-# -------------------------------------------------
-# LOGIN FAIL
-# -------------------------------------------------
-elif st.session_state.get("authentication_status") is False:
-    st.error("Username/password incorrect")
-
-else:
-    st.warning("Please login")
