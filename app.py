@@ -1,126 +1,111 @@
 import streamlit as st
-import pickle
-from pathlib import Path
-import streamlit_authenticator as stauth
 import pandas as pd
 import os
-import cv2
 import smtplib
 from email.message import EmailMessage
 
 # -------------------------------------------------
-# Page Config
+# PAGE CONFIG
 # -------------------------------------------------
 st.set_page_config(page_title="Missing Persons Tracking System")
-
-# -------------------------------------------------
-# Title
-# -------------------------------------------------
 st.title("🧭 Missing Persons Tracking System")
 
 # -------------------------------------------------
-# LOAD USERS
+# USER FILE (LOGIN SYSTEM)
 # -------------------------------------------------
-def load_users():
-    if os.path.exists("login_info.txt"):
-        with open("login_info.txt", "r") as f:
-            lines = f.readlines()
-            names = eval(lines[0].split("=")[1].strip())
-            usernames = eval(lines[1].split("=")[1].strip())
-    else:
-        names, usernames = [], []
+USER_FILE = "users.csv"
 
-    if os.path.exists("hashed_pw.pkl"):
-        with open("hashed_pw.pkl", "rb") as file:
-            hashed_passwords = pickle.load(file)
-    else:
-        hashed_passwords = []
-
-    return names, usernames, hashed_passwords
-
-
-def save_users(names, usernames, hashed_passwords):
-    with open("login_info.txt", "w") as f:
-        f.write(f"names={names}\n")
-        f.write(f"usernames={usernames}\n")
-
-    with open("hashed_pw.pkl", "wb") as file:
-        pickle.dump(hashed_passwords, file)
-
-
-names, usernames, hashed_passwords = load_users()
-
-credentials = {
-    "usernames": {
-        usernames[i]: {"name": names[i], "password": hashed_passwords[i]}
-        for i in range(len(usernames))
-    }
-}
-
-authenticator = stauth.Authenticate(
-    credentials,
-    "missing_person_app",
-    "abcdef",
-    cookie_expiry_days=30
-)
+if os.path.exists(USER_FILE):
+    users = pd.read_csv(USER_FILE)
+else:
+    users = pd.DataFrame(columns=["name", "username", "password"])
 
 # -------------------------------------------------
 # LOGIN / REGISTER
 # -------------------------------------------------
-menu_auth = st.radio("Select Option", ["Login", "Register"])
+menu_auth = st.sidebar.selectbox("Menu", ["Login", "Register"])
 
-if menu_auth == "Login":
-    name, authentication_status, username = authenticator.login("Login", "main")
+# ---------------- REGISTER ----------------
+if menu_auth == "Register":
+    st.subheader("📝 Create Account")
 
-elif menu_auth == "Register":
-    st.subheader("📝 Register")
-
-    new_name = st.text_input("Name")
-    new_username = st.text_input("Username")
-    new_password = st.text_input("Password", type="password")
+    name = st.text_input("Name")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
     if st.button("Register"):
-        if new_name and new_username and new_password:
-
-            if new_username in usernames:
-                st.error("Username already exists")
-            else:
-                hashed = stauth.Hasher([new_password]).generate()[0]
-
-                names.append(new_name)
-                usernames.append(new_username)
-                hashed_passwords.append(hashed)
-
-                save_users(names, usernames, hashed_passwords)
-
-                st.success("Registered successfully! Go to Login")
-
+        if name.strip() == "" or username.strip() == "" or password.strip() == "":
+            st.warning("Fill all fields")
+        elif username in users["username"].values:
+            st.error("Username already exists")
         else:
-            st.error("Fill all fields")
+            new_user = pd.DataFrame([[name, username, password]],
+                                    columns=["name", "username", "password"])
+            users = pd.concat([users, new_user], ignore_index=True)
+            users.to_csv(USER_FILE, index=False)
+            st.success("Account created successfully ✅")
+            st.rerun()
 
-    authentication_status = None
+# ---------------- LOGIN ----------------
+elif menu_auth == "Login":
+    st.subheader("🔐 Login")
 
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        user = users[
+            (users["username"] == username) &
+            (users["password"] == password)
+        ]
+
+        if not user.empty:
+            st.session_state["user"] = username
+            st.success("Login successful 🎉")
+            st.rerun()
+        else:
+            st.error("Invalid credentials")
 
 # -------------------------------------------------
-# LOGIN STATUS
+# EMAIL FUNCTION
 # -------------------------------------------------
-if authentication_status:
-    st.success(f"Welcome {name}")
-    authenticator.logout("Logout", "sidebar")
+def send_email(to_email, subject, body):
+    try:
+        sender_email = st.secrets["EMAIL"]
+        app_password = st.secrets["EMAIL_PASSWORD"]
+
+        msg = EmailMessage()
+        msg.set_content(body)
+
+        msg["Subject"] = subject
+        msg["From"] = sender_email
+        msg["To"] = to_email
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(sender_email, app_password)
+            smtp.send_message(msg)
+
+    except:
+        st.warning("Email not configured")
+
+# -------------------------------------------------
+# AFTER LOGIN (MAIN APP)
+# -------------------------------------------------
+if "user" in st.session_state:
+
+    st.success(f"Welcome {st.session_state['user']}")
 
     menu = st.selectbox(
         "Select Option",
         ["Report Missing Person", "View Reports", "Live Detection"]
     )
 
-# -------------------------------------------------
-# REPORT
-# -------------------------------------------------
+    # ---------------- REPORT ----------------
     if menu == "Report Missing Person":
 
         st.header("➕ Report Missing Person")
 
-        person_name = st.text_input("Name")
+        name = st.text_input("Name")
         image = st.file_uploader("Upload Image")
         phone = st.text_input("Phone Number")
         age = st.number_input("Age", min_value=1)
@@ -129,17 +114,16 @@ if authentication_status:
         location = st.text_input("Location")
 
         if st.button("Submit"):
-
-            if all([person_name, image, phone, age, admin_email, family_email, location]):
+            if all([name, image, phone, age, admin_email, family_email, location]):
 
                 os.makedirs("data", exist_ok=True)
-                file_path = f"data/{person_name}.jpg"
+                file_path = f"data/{name}.jpg"
 
                 with open(file_path, "wb") as f:
                     f.write(image.read())
 
                 data = {
-                    "Name": person_name,
+                    "Name": name,
                     "Image Path": file_path,
                     "Phone Number": phone,
                     "Location": location,
@@ -162,9 +146,7 @@ if authentication_status:
             else:
                 st.error("Fill all fields")
 
-# -------------------------------------------------
-# VIEW REPORTS
-# -------------------------------------------------
+    # ---------------- VIEW ----------------
     elif menu == "View Reports":
 
         st.header("📋 Reports")
@@ -180,31 +162,7 @@ if authentication_status:
         else:
             st.warning("No data")
 
-# -------------------------------------------------
-# EMAIL FUNCTION
-# -------------------------------------------------
-    def send_email(to_email, subject, body):
-        try:
-            sender_email = st.secrets["EMAIL"]
-            app_password = st.secrets["EMAIL_PASSWORD"]
-
-            msg = EmailMessage()
-            msg.set_content(body)
-
-            msg["Subject"] = subject
-            msg["From"] = sender_email
-            msg["To"] = to_email
-
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-                smtp.login(sender_email, app_password)
-                smtp.send_message(msg)
-
-        except:
-            st.warning("Email not configured")
-
-# -------------------------------------------------
-# LIVE DETECTION
-# -------------------------------------------------
+    # ---------------- LIVE DETECTION ----------------
     elif menu == "Live Detection":
 
         st.header("🎥 Live Detection (Demo)")
@@ -222,30 +180,27 @@ if authentication_status:
 
                     st.success(f"🎉 Detected: {name}")
 
-                    subject = f"{name} Detected"
+                    subject = f"🔍 Alert: {name} Detected"
+
                     body = f"""
+Detected Person Alert
+
 Name: {name}
 Location: {row.get("Location")}
 Phone: {row.get("Phone Number")}
 """
 
-                    send_email(row.get("Admin Email"), subject, body)
-                    send_email(row.get("Family Email"), subject, body)
+                    if row.get("Admin Email"):
+                        send_email(row.get("Admin Email"), subject, body)
+
+                    if row.get("Family Email"):
+                        send_email(row.get("Family Email"), subject, body)
 
         else:
-            st.warning("No data")
+            st.warning("No data available")
 
 # -------------------------------------------------
-# LOGIN FAIL
-# -------------------------------------------------
-elif authentication_status is False:
-    st.error("Username/password incorrect")
-
-else:
-    st.warning("Please login or register")
-
-# -------------------------------------------------
-# CREATED BY FOOTER
+# FOOTER (PROFILE)
 # -------------------------------------------------
 st.markdown("---")
 
@@ -270,6 +225,7 @@ st.markdown(
         <div style="text-align:left;">
             <p style="margin:0; font-size:14px; color:gray;">Created by</p>
             <h4 style="margin:0; color:white;">Gongati Naresh</h4>
+            <p style="margin:0; color:gray;">@gongatinaresh</p>
         </div>
     </div>
     """,
