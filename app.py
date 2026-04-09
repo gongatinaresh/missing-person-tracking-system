@@ -1,75 +1,58 @@
 import streamlit as st
+import pickle
+from pathlib import Path
+import streamlit_authenticator as stauth
 import pandas as pd
 import os
+import cv2
+
+# Email
 import smtplib
 from email.message import EmailMessage
 
 # -------------------------------------------------
-# PAGE CONFIG
+# Page Config
 # -------------------------------------------------
 st.set_page_config(page_title="Missing Persons Tracking System")
+
+# -------------------------------------------------
+# Title
+# -------------------------------------------------
 st.title("🧭 Missing Persons Tracking System")
 
 # -------------------------------------------------
-# USER FILE (LOGIN SYSTEM)
+# Load Login Info
 # -------------------------------------------------
-USER_FILE = "users.csv"
+with open("login_info.txt", "r") as f:
+    lines = f.readlines()
 
-if os.path.exists(USER_FILE):
-    users = pd.read_csv(USER_FILE)
-else:
-    users = pd.DataFrame(columns=["name", "username", "password"])
+names = eval(lines[0].split("=")[1].strip())
+usernames = eval(lines[1].split("=")[1].strip())
 
-# -------------------------------------------------
-# LOGIN / REGISTER
-# -------------------------------------------------
-menu_auth = st.sidebar.selectbox("Menu", ["Login", "Register"])
+file_path = Path(__file__).parent / "hashed_pw.pkl"
+with file_path.open("rb") as file:
+    hashed_passwords = pickle.load(file)
 
-# ---------------- REGISTER ----------------
-if menu_auth == "Register":
-    st.subheader("📝 Create Account")
+credentials = {
+    "usernames": {
+        usernames[i]: {"name": names[i], "password": hashed_passwords[i]}
+        for i in range(len(usernames))
+    }
+}
 
-    name = st.text_input("Name")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+authenticator = stauth.Authenticate(
+    credentials,
+    "missing_person_app",
+    "abcdef",
+    cookie_expiry_days=30
+)
 
-    if st.button("Register"):
-        if name.strip() == "" or username.strip() == "" or password.strip() == "":
-            st.warning("Fill all fields")
-        elif username in users["username"].values:
-            st.error("Username already exists")
-        else:
-            new_user = pd.DataFrame([[name, username, password]],
-                                    columns=["name", "username", "password"])
-            users = pd.concat([users, new_user], ignore_index=True)
-            users.to_csv(USER_FILE, index=False)
-            st.success("Account created successfully ✅")
-            st.rerun()
-
-# ---------------- LOGIN ----------------
-elif menu_auth == "Login":
-    st.subheader("🔐 Login")
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        user = users[
-            (users["username"] == username) &
-            (users["password"] == password)
-        ]
-
-        if not user.empty:
-            st.session_state["user"] = username
-            st.success("Login successful 🎉")
-            st.rerun()
-        else:
-            st.error("Invalid credentials")
+authenticator.login("Login", "main")
 
 # -------------------------------------------------
-# EMAIL FUNCTION
+# Email Function
 # -------------------------------------------------
-def send_email(to_email, subject, body):
+def send_email(to_email, subject, body, image_path=None):
     try:
         sender_email = st.secrets["EMAIL"]
         app_password = st.secrets["EMAIL_PASSWORD"]
@@ -81,26 +64,43 @@ def send_email(to_email, subject, body):
         msg["From"] = sender_email
         msg["To"] = to_email
 
+        # attach image
+        if image_path and os.path.exists(image_path):
+            with open(image_path, "rb") as img:
+                msg.add_attachment(
+                    img.read(),
+                    maintype="image",
+                    subtype="jpeg",
+                    filename=os.path.basename(image_path)
+                )
+
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(sender_email, app_password)
             smtp.send_message(msg)
 
-    except:
-        st.warning("Email not configured")
+        return True
+
+    except Exception as e:
+        st.error(f"Email failed: {e}")
+        return False
+
 
 # -------------------------------------------------
-# AFTER LOGIN (MAIN APP)
+# AFTER LOGIN
 # -------------------------------------------------
-if "user" in st.session_state:
+if st.session_state.get("authentication_status"):
 
-    st.success(f"Welcome {st.session_state['user']}")
+    st.success(f"Welcome {st.session_state['name']}")
+    authenticator.logout("Logout", "sidebar")
 
     menu = st.selectbox(
         "Select Option",
         ["Report Missing Person", "View Reports", "Live Detection"]
     )
 
-    # ---------------- REPORT ----------------
+# -------------------------------------------------
+# REPORT
+# -------------------------------------------------
     if menu == "Report Missing Person":
 
         st.header("➕ Report Missing Person")
@@ -114,6 +114,7 @@ if "user" in st.session_state:
         location = st.text_input("Location")
 
         if st.button("Submit"):
+
             if all([name, image, phone, age, admin_email, family_email, location]):
 
                 os.makedirs("data", exist_ok=True)
@@ -146,7 +147,9 @@ if "user" in st.session_state:
             else:
                 st.error("Fill all fields")
 
-    # ---------------- VIEW ----------------
+# -------------------------------------------------
+# VIEW REPORTS
+# -------------------------------------------------
     elif menu == "View Reports":
 
         st.header("📋 Reports")
@@ -162,43 +165,59 @@ if "user" in st.session_state:
         else:
             st.warning("No data")
 
-    # ---------------- LIVE DETECTION ----------------
+# -------------------------------------------------
+# LIVE DETECTION (SIMPLIFIED)
+# -------------------------------------------------
     elif menu == "Live Detection":
 
-        st.header("🎥 Live Detection (Demo)")
+        st.header("🎥 Live Detection (Demo Version)")
 
         if os.path.exists("missing_data.csv"):
 
             df = pd.read_csv("missing_data.csv")
-            detected = set()
 
+            detected_names = set()
+
+            # simulate detection
             for _, row in df.iterrows():
-                name = row.get("Name")
 
-                if name not in detected:
-                    detected.add(name)
+                try:
+                    name = row.get("Name")
 
-                    st.success(f"🎉 Detected: {name}")
+                    if name not in detected_names:
+                        detected_names.add(name)
 
-                    subject = f"🔍 Alert: {name} Detected"
+                        st.success(f"🎉 Detected: {name}")
 
-                    body = f"""
-Detected Person Alert
+                        subject = f"🔍 AI Alert: {name} Detected"
+
+                        body = f"""
+Live Camera Detection Alert
 
 Name: {name}
 Location: {row.get("Location")}
 Phone: {row.get("Phone Number")}
 """
 
-                    if row.get("Admin Email"):
-                        send_email(row.get("Admin Email"), subject, body)
+                        # send emails
+                        if row.get("Admin Email"):
+                            send_email(row.get("Admin Email"), subject, body)
 
-                    if row.get("Family Email"):
-                        send_email(row.get("Family Email"), subject, body)
+                        if row.get("Family Email"):
+                            send_email(row.get("Family Email"), subject, body)
+
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
         else:
             st.warning("No data available")
 
 
-  
+# -------------------------------------------------
+# LOGIN FAIL
+# -------------------------------------------------
+elif st.session_state.get("authentication_status") is False:
+    st.error("Username/password incorrect")
 
+else:
+    st.warning("Please login")
