@@ -5,3 +5,4 @@ numpy
 opencv-python-headless
 Pillow
 streamlit-webrtc
+opencv-python-headless
