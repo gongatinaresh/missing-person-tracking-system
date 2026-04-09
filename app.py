@@ -258,7 +258,7 @@ st.markdown(
         gap:15px;
         margin-top:20px;
     ">
-        <img src="C:\Users\lovel\Downloads\pho.jpeg"
+        <img src="https://raw.githubusercontent.com/gongatinaresh/missing-person-tracking-system/main/Photo.jpg"
              style="
                 width:60px;
                 height:60px;
