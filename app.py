@@ -5,10 +5,15 @@ import streamlit_authenticator as stauth
 import pandas as pd
 import os
 import cv2
+import numpy as np
 
 # Email
 import smtplib
 from email.message import EmailMessage
+
+# Camera
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import av
 
 # -------------------------------------------------
 # Page Config
@@ -47,12 +52,13 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-authenticator.login("Login", "main")
+# 🔥 FIXED HERE
+authenticator.login("Login", "sidebar")
 
 # -------------------------------------------------
 # Email Function
 # -------------------------------------------------
-def send_email(to_email, subject, body, image_path=None):
+def send_email(to_email, subject, body):
     try:
         sender_email = st.secrets["EMAIL"]
         app_password = st.secrets["EMAIL_PASSWORD"]
@@ -63,16 +69,6 @@ def send_email(to_email, subject, body, image_path=None):
         msg["Subject"] = subject
         msg["From"] = sender_email
         msg["To"] = to_email
-
-        # attach image
-        if image_path and os.path.exists(image_path):
-            with open(image_path, "rb") as img:
-                msg.add_attachment(
-                    img.read(),
-                    maintype="image",
-                    subtype="jpeg",
-                    filename=os.path.basename(image_path)
-                )
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(sender_email, app_password)
@@ -166,52 +162,89 @@ if st.session_state.get("authentication_status"):
             st.warning("No data")
 
 # -------------------------------------------------
-# LIVE DETECTION (SIMPLIFIED)
+# LIVE CAMERA + MATCHING
 # -------------------------------------------------
     elif menu == "Live Detection":
 
-        st.header("🎥 Live Detection (Demo Version)")
+        st.header("🎥 Live Camera Detection + Matching")
 
+        # ---------- MATCH FUNCTION ----------
+        def match_faces(img1, img2):
+            try:
+                img1 = cv2.resize(img1, (100, 100))
+                img2 = cv2.resize(img2, (100, 100))
+                diff = np.mean((img1 - img2) ** 2)
+                return diff < 2000
+            except:
+                return False
+
+        # ---------- LOAD DATA ----------
         if os.path.exists("missing_data.csv"):
-
             df = pd.read_csv("missing_data.csv")
+        else:
+            df = None
 
-            detected_names = set()
+        # ---------- CAMERA CLASS ----------
+        class VideoTransformer(VideoTransformerBase):
+            def __init__(self):
+                self.detected = set()
 
-            # simulate detection
-            for _, row in df.iterrows():
+            def transform(self, frame):
+                img = frame.to_ndarray(format="bgr24")
 
-                try:
-                    name = row.get("Name")
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                face_cascade = cv2.CascadeClassifier(
+                    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+                )
 
-                    if name not in detected_names:
-                        detected_names.add(name)
+                faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-                        st.success(f"🎉 Detected: {name}")
+                if df is not None:
+                    for (x, y, w, h) in faces:
+                        face = img[y:y+h, x:x+w]
 
-                        subject = f"🔍 AI Alert: {name} Detected"
+                        for _, row in df.iterrows():
+                            try:
+                                db_img = cv2.imread(row["Image Path"])
 
-                        body = f"""
-Live Camera Detection Alert
+                                if db_img is not None and match_faces(face, db_img):
+
+                                    name = row["Name"]
+
+                                    if name not in self.detected:
+                                        self.detected.add(name)
+
+                                        subject = f"🚨 ALERT: {name} Detected"
+
+                                        body = f"""
+Match Found!
 
 Name: {name}
 Location: {row.get("Location")}
 Phone: {row.get("Phone Number")}
 """
 
-                        # send emails
-                        if row.get("Admin Email"):
-                            send_email(row.get("Admin Email"), subject, body)
+                                        if row.get("Admin Email"):
+                                            send_email(row.get("Admin Email"), subject, body)
 
-                        if row.get("Family Email"):
-                            send_email(row.get("Family Email"), subject, body)
+                                        if row.get("Family Email"):
+                                            send_email(row.get("Family Email"), subject, body)
 
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                                    cv2.putText(img, name, (x, y-10),
+                                                cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
-        else:
-            st.warning("No data available")
+                                    break
+                            except:
+                                pass
 
+                        cv2.rectangle(img, (x, y), (x+w, y+h), (0,255,0), 2)
+
+                return img
+
+        webrtc_streamer(
+            key="camera",
+            video_transformer_factory=VideoTransformer
+        )
 
 # -------------------------------------------------
 # LOGIN FAIL
