@@ -200,37 +200,5 @@ Phone: {row.get("Phone Number")}
             st.warning("No data available")
 
 
-    # your full app code above...
+  
 
-# -------------------------------------------------
-# FOOTER (ALWAYS LAST)
-# -------------------------------------------------
-st.markdown("---")
-
-st.markdown(
-    """
-    <div style="
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:15px;
-        margin-top:20px;
-    ">
-        <img src="https://raw.githubusercontent.com/gongatinaresh/missing-person-tracking-system/main/Photo.jpg"
-             style="
-                width:60px;
-                height:60px;
-                border-radius:50%;
-                border:2px solid white;
-                object-fit:cover;
-             ">
-
-        <div style="text-align:left;">
-            <p style="margin:0; font-size:14px; color:gray;">Created by</p>
-            <h4 style="margin:0; color:white;">Gongati Naresh</h4>
-            <p style="margin:0; color:gray;">@gongatinaresh</p>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
