@@ -18,7 +18,7 @@ USER_FILE = "users.csv"
 if os.path.exists(USER_FILE):
     users = pd.read_csv(USER_FILE)
 else:
-    users = pd.DataFrame(columns=["username", "password"])
+    users = pd.DataFrame(columns=["name", "username", "password"])
 
 # -------------------------------------------------
 # LOGIN / REGISTER MENU
@@ -29,18 +29,22 @@ menu = st.sidebar.selectbox("Menu", ["Login", "Register"])
 if menu == "Register":
     st.subheader("Create Account")
 
+    name = st.text_input("Name")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
 
     if st.button("Register"):
-        if username in users["username"].values:
+        if username.strip() == "" or password.strip() == "":
+            st.warning("Fill all fields")
+        elif username in users["username"].values:
             st.error("Username already exists")
         else:
-            new_user = pd.DataFrame([[username, password]],
-                                    columns=["username", "password"])
+            new_user = pd.DataFrame([[name, username, password]],
+                                    columns=["name", "username", "password"])
             users = pd.concat([users, new_user], ignore_index=True)
             users.to_csv(USER_FILE, index=False)
             st.success("Account created successfully ✅")
+            st.rerun()
 
 # ---------------- LOGIN ----------------
 elif menu == "Login":
@@ -50,13 +54,20 @@ elif menu == "Login":
     password = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        user = users[(users["username"] == username) & (users["password"] == password)]
-
-        if not user.empty:
-            st.session_state["user"] = username
-            st.success("Login successful 🎉")
+        if username.strip() == "" or password.strip() == "":
+            st.warning("Enter username & password")
         else:
-            st.error("Invalid credentials")
+            user = users[
+                (users["username"] == username) &
+                (users["password"] == password)
+            ]
+
+            if not user.empty:
+                st.session_state["user"] = username
+                st.success("Login successful 🎉")
+                st.rerun()
+            else:
+                st.error("Invalid credentials")
 
 # -------------------------------------------------
 # EMAIL FUNCTION
@@ -171,45 +182,65 @@ if "user" in st.session_state:
 # ---------------- DETECTION ----------------
     elif menu == "Live Detection":
 
-        st.header("🎥 Live Detection")
+        st.header("🎥 Live Detection (Demo)")
 
         if os.path.exists("missing_data.csv"):
 
             df = pd.read_csv("missing_data.csv")
 
-            detected_names = set()
+            detected = set()
 
             for _, row in df.iterrows():
+                name = row.get("Name")
 
-                try:
-                    name = row.get("Name")
+                if name not in detected:
+                    detected.add(name)
 
-                    if name not in detected_names:
-                        detected_names.add(name)
+                    st.success(f"🎉 Detected: {name}")
 
-                        st.success(f"🎉 Detected: {name}")
+                    subject = f"🔍 Alert: {name} Detected"
 
-                        subject = f"🔍 AI Alert: {name} Detected"
-
-                        body = f"""
-Live Detection Alert
+                    body = f"""
+Detected Person Alert
 
 Name: {name}
 Location: {row.get("Location")}
 Phone: {row.get("Phone Number")}
 """
 
-                        if row.get("Admin Email"):
-                            send_email(row.get("Admin Email"), subject, body)
+                    if row.get("Admin Email"):
+                        send_email(row.get("Admin Email"), subject, body)
 
-                        if row.get("Family Email"):
-                            send_email(row.get("Family Email"), subject, body)
-
-                except Exception as e:
-                    st.error(f"Error: {e}")
+                    if row.get("Family Email"):
+                        send_email(row.get("Family Email"), subject, body)
 
         else:
             st.warning("No data available")
 
-else:
-    st.warning("Please login or register")
+# -------------------------------------------------
+# FOOTER (CREATED BY)
+# -------------------------------------------------
+st.markdown("---")
+
+st.markdown(
+    """
+    <div style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #0e1117;
+        padding: 20px;
+        border-radius: 12px;
+    ">
+        <img src="https://i.imgur.com/yourphoto.jpg"
+             style="width:80px;height:80px;border-radius:50%;margin-right:15px;">
+        
+        <div style="color:white;">
+            <p style="margin:0; font-size:14px; color:lightgray;">Created by</p>
+            <h3 style="margin:0;">Gongati Naresh</h3>
+            <p style="margin:0; color:gray;">@gongatinaresh</p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
