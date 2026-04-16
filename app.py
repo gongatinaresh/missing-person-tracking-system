@@ -228,12 +228,3 @@ if st.session_state.get("authentication_status"):
 
         webrtc_streamer(key="cam",video_transformer_factory=Cam)
 
-# -------------------------------------------------
-# FOOTER
-# -------------------------------------------------
-st.markdown("""
-<div style='text-align:center;margin-top:20px'>
-<p style='color:gray'>Created by</p>
-<h4>Gongati Naresh</h4>
-</div>
-""", unsafe_allow_html=True)
