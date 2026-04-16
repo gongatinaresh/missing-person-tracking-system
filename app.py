@@ -16,39 +16,65 @@ from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 import av
 
 # -------------------------------------------------
-# UI STYLE (PREMIUM)
+# PREMIUM UI STYLE
 # -------------------------------------------------
 st.markdown("""
 <style>
 
+/* BACKGROUND */
 .stApp {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* HEADINGS */
+h1, h2, h3 {
+    text-align: center;
     color: white;
 }
 
-h1, h2, h3, h4 {
+/* CARD STYLE */
+.card {
+    padding: 25px;
+    border-radius: 15px;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     text-align: center;
+    transition: 0.3s;
+}
+.card:hover {
+    transform: scale(1.03);
 }
 
-/* Buttons */
+/* BUTTON */
 .stButton>button {
     background: linear-gradient(90deg, #00c6ff, #0072ff);
     color: white;
-    border-radius: 10px;
+    border-radius: 12px;
     height: 45px;
     font-weight: bold;
-    box-shadow: 0 0 10px #00c6ff;
+    border: none;
+    box-shadow: 0 0 15px #00c6ff;
+}
+.stButton>button:hover {
+    transform: scale(1.05);
 }
 
-/* Cards */
-.card {
-    padding: 20px;
-    border-radius: 15px;
-    background: rgba(255,255,255,0.05);
-    text-align: center;
+/* INPUT */
+input, textarea {
+    background-color: rgba(255,255,255,0.1) !important;
+    color: white !important;
+    border-radius: 8px !important;
 }
 
-/* Hide Streamlit menu */
+/* SIDEBAR */
+section[data-testid="stSidebar"] {
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(10px);
+}
+
+/* HIDE STREAMLIT DEFAULT */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 
@@ -85,7 +111,9 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 # CENTER LOGIN
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
     name, auth_status, username = authenticator.login("Login", "main")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 if auth_status:
     st.success(f"Welcome {name}")
@@ -134,9 +162,26 @@ if st.session_state.get("authentication_status"):
 
         col1, col2, col3 = st.columns(3)
 
-        col1.markdown(f"<div class='card'>👥<h2>{total}</h2>Total Missing</div>", unsafe_allow_html=True)
-        col2.markdown("<div class='card'>📋<h2>Reports</h2></div>", unsafe_allow_html=True)
-        col3.markdown("<div class='card'>🚨<h2>Alerts</h2></div>", unsafe_allow_html=True)
+        col1.markdown(f"""
+        <div class='card'>
+            <h1>👥 {total}</h1>
+            <p>Total Missing Persons</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col2.markdown("""
+        <div class='card'>
+            <h1>📋</h1>
+            <p>Reports</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col3.markdown("""
+        <div class='card'>
+            <h1>🚨</h1>
+            <p>Alerts</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ---------------- REPORT ----------------
     elif menu == "Report":
@@ -187,7 +232,7 @@ if st.session_state.get("authentication_status"):
             df = pd.read_csv("missing_data.csv")
             st.dataframe(df)
 
-            if st.button("Clear"):
+            if st.button("🗑 Clear Reports"):
                 os.remove("missing_data.csv")
                 st.success("Cleared")
 
@@ -227,4 +272,3 @@ if st.session_state.get("authentication_status"):
                 return img
 
         webrtc_streamer(key="cam",video_transformer_factory=Cam)
-
