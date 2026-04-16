@@ -6,14 +6,14 @@ import numpy as np
 import smtplib
 from email.message import EmailMessage
 
-# -----------------------------------------
-# CONFIG
-# -----------------------------------------
+# -------------------------------
+# PAGE CONFIG
+# -------------------------------
 st.set_page_config(page_title="Missing Person Detection", layout="wide")
 
-# -----------------------------------------
+# -------------------------------
 # UI STYLE
-# -----------------------------------------
+# -------------------------------
 st.markdown("""
 <style>
 .stApp {
@@ -31,9 +31,9 @@ st.markdown("""
 
 st.title("🧭 Missing Person Detection System")
 
-# -----------------------------------------
-# EMAIL
-# -----------------------------------------
+# -------------------------------
+# EMAIL FUNCTION
+# -------------------------------
 def send_email(to_email, subject, body):
     try:
         sender = st.secrets["EMAIL"]
@@ -48,31 +48,31 @@ def send_email(to_email, subject, body):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(sender, password)
             smtp.send_message(msg)
+    except Exception as e:
+        st.error(f"Email Error: {e}")
 
-    except:
-        pass
-
-# -----------------------------------------
-# DATABASE FILE
-# -----------------------------------------
+# -------------------------------
+# FILES
+# -------------------------------
 DATA_FILE = "data.csv"
-os.makedirs("faces", exist_ok=True)
+FACE_DIR = "faces"
+os.makedirs(FACE_DIR, exist_ok=True)
 
-# -----------------------------------------
-# FACE DETECTOR
-# -----------------------------------------
+# -------------------------------
+# FACE CASCADE
+# -------------------------------
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
-# -----------------------------------------
-# MENU
-# -----------------------------------------
+# -------------------------------
+# SIDEBAR MENU
+# -------------------------------
 menu = st.sidebar.radio("Menu", ["➕ Report", "📋 View", "🎥 Detection"])
 
-# -----------------------------------------
-# REPORT
-# -----------------------------------------
+# =====================================================
+# ➕ REPORT
+# =====================================================
 if menu == "➕ Report":
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -82,34 +82,32 @@ if menu == "➕ Report":
     image = st.file_uploader("Upload Face Image")
 
     if st.button("Submit"):
-
         if name and email and image:
 
-            file_path = f"faces/{name}.jpg"
+            file_path = os.path.join(FACE_DIR, f"{name}.jpg")
 
             with open(file_path, "wb") as f:
                 f.write(image.read())
 
-            data = {"Name": name, "Email": email, "Image": file_path}
+            new_data = {"Name": name, "Email": email, "Image": file_path}
 
             if os.path.exists(DATA_FILE):
                 df = pd.read_csv(DATA_FILE)
-                df = pd.concat([df, pd.DataFrame([data])])
+                df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             else:
-                df = pd.DataFrame([data])
+                df = pd.DataFrame([new_data])
 
             df.to_csv(DATA_FILE, index=False)
 
-            st.success("Saved Successfully")
-
+            st.success("Saved Successfully ✅")
         else:
             st.error("Fill all fields")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# -----------------------------------------
-# VIEW
-# -----------------------------------------
+# =====================================================
+# 📋 VIEW
+# =====================================================
 elif menu == "📋 View":
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -120,82 +118,78 @@ elif menu == "📋 View":
 
         if st.button("🗑 Clear Reports"):
             os.remove(DATA_FILE)
-            st.success("Cleared")
+            st.success("Data Cleared")
             st.rerun()
-
     else:
-        st.warning("No Data")
+        st.warning("No Data Available")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-# -----------------------------------------
-# TRAIN MODEL
-# -----------------------------------------
-def train_model():
-
-    faces = []
-    labels = []
-    label_map = {}
-
-    if not os.path.exists(DATA_FILE):
-        return None, None
-
-    df = pd.read_csv(DATA_FILE)
-
-    for i, row in df.iterrows():
-        img = cv2.imread(row["Image"])
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        faces_detected = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-        for (x, y, w, h) in faces_detected:
-            face = gray[y:y+h, x:x+w]
-            faces.append(face)
-            labels.append(i)
-            label_map[i] = row["Name"]
-
-    if len(faces) == 0:
-        return None, None
-
-    model = cv2.face.LBPHFaceRecognizer_create()
-    model.train(faces, np.array(labels))
-
-    return model, label_map
-
-# -----------------------------------------
-# DETECTION
-# -----------------------------------------
+# =====================================================
+# 🎥 DETECTION
+# =====================================================
 elif menu == "🎥 Detection":
 
     st.markdown('<div class="card">', unsafe_allow_html=True)
 
     st.subheader("📷 Live Face Detection")
 
+    # -------- TRAIN MODEL --------
+    def train_model():
+        if not os.path.exists(DATA_FILE):
+            return None, None
+
+        df = pd.read_csv(DATA_FILE)
+
+        faces = []
+        labels = []
+        label_map = {}
+
+        for i, row in df.iterrows():
+            img = cv2.imread(row["Image"])
+            if img is None:
+                continue
+
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            detected_faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+            for (x, y, w, h) in detected_faces:
+                face = gray[y:y+h, x:x+w]
+                faces.append(face)
+                labels.append(i)
+                label_map[i] = row["Name"]
+
+        if len(faces) == 0:
+            return None, None
+
+        model = cv2.face.LBPHFaceRecognizer_create()
+        model.train(faces, np.array(labels))
+
+        return model, label_map
+
     model, label_map = train_model()
 
     if model is None:
-        st.warning("No trained data available")
+        st.warning("No training data available")
     else:
-
         run = st.checkbox("Start Camera")
 
         if run:
             cap = cv2.VideoCapture(0)
             frame_window = st.image([])
-
-            detected = set()
+            detected_names = set()
 
             df = pd.read_csv(DATA_FILE)
 
-            while run:
+            while True:
                 ret, frame = cap.read()
                 if not ret:
                     break
 
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces_detected = face_cascade.detectMultiScale(gray, 1.3, 5)
+                faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-                for (x, y, w, h) in faces_detected:
+                for (x, y, w, h) in faces:
                     face = gray[y:y+h, x:x+w]
 
                     label, confidence = model.predict(face)
@@ -206,16 +200,16 @@ elif menu == "🎥 Detection":
                         cv2.putText(frame, name, (x, y-10),
                                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
 
-                        if name not in detected:
-                            detected.add(name)
+                        if name not in detected_names:
+                            detected_names.add(name)
 
-                            st.success(f"🎉 Match Found: {name}")
+                            st.success(f"Match Found: {name}")
 
                             email = df[df["Name"] == name]["Email"].values[0]
 
                             send_email(
                                 email,
-                                "Person Found",
+                                "Missing Person Found",
                                 f"{name} has been detected"
                             )
 
