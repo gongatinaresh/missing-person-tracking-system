@@ -1,4 +1,7 @@
 import streamlit as st
+import pickle
+from pathlib import Path
+import streamlit_authenticator as stauth
 import pandas as pd
 import os
 import cv2
@@ -8,206 +11,236 @@ from email.message import EmailMessage
 # -----------------------------------------
 # PAGE CONFIG
 # -----------------------------------------
-st.set_page_config(page_title="Missing Person Detection", layout="wide")
+st.set_page_config(page_title="Missing Persons Tracking System", layout="wide")
 
 # -----------------------------------------
-# CUSTOM UI (GLASS + GRADIENT)
+# UI STYLE (GLASS + GRADIENT)
 # -----------------------------------------
-def set_ui():
-    st.markdown("""
-    <style>
-    .stApp {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 15px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.card {
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+input {
+    background-color: rgba(255,255,255,0.2) !important;
+    color: white !important;
+}
+
+button {
+    background: linear-gradient(90deg, #ff6a00, #ee0979);
+    color: white;
+    border-radius: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------------------------
+# TITLE
+# -----------------------------------------
+st.title("🧭 Missing Persons Tracking System")
+
+# -----------------------------------------
+# LOAD LOGIN DATA
+# -----------------------------------------
+with open("login_info.txt", "r") as f:
+    lines = f.readlines()
+
+names = eval(lines[0].split("=")[1].strip())
+usernames = eval(lines[1].split("=")[1].strip())
+
+file_path = Path(__file__).parent / "hashed_pw.pkl"
+with file_path.open("rb") as file:
+    hashed_passwords = pickle.load(file)
+
+credentials = {
+    "usernames": {
+        usernames[i]: {"name": names[i], "password": hashed_passwords[i]}
+        for i in range(len(usernames))
     }
+}
 
-    .glass {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 25px;
-        border-radius: 15px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        width: 400px;
-        margin: auto;
-        margin-top: 100px;
-    }
-
-    .card {
-        background: rgba(255,255,255,0.1);
-        padding: 20px;
-        border-radius: 10px;
-        margin: 10px;
-    }
-
-    input {
-        background-color: rgba(255,255,255,0.2) !important;
-        color: white !important;
-    }
-
-    button {
-        background: linear-gradient(90deg, #ff6a00, #ee0979);
-        color: white;
-        border-radius: 8px;
-    }
-
-    </style>
-    """, unsafe_allow_html=True)
-
-set_ui()
+authenticator = stauth.Authenticate(
+    credentials,
+    "missing_person_app",
+    "abcdef",
+    cookie_expiry_days=30
+)
 
 # -----------------------------------------
-# SIMPLE LOGIN (NO AUTH LIB)
+# LOGIN UI (CENTERED)
 # -----------------------------------------
-USERNAME = "admin"
-PASSWORD = "1234"
+col1, col2, col3 = st.columns([1,2,1])
 
-if "login" not in st.session_state:
-    st.session_state.login = False
-
-# -----------------------------------------
-# LOGIN PAGE
-# -----------------------------------------
-if not st.session_state.login:
-
+with col2:
     st.markdown('<div class="glass">', unsafe_allow_html=True)
-
-    st.subheader("Hello there 👋")
-    st.write("Welcome Back")
-
-    user = st.text_input("Username")
-    pwd = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        if user == USERNAME and pwd == PASSWORD:
-            st.session_state.login = True
-            st.rerun()
-        else:
-            st.error("Invalid Credentials")
-
+    authenticator.login("Login", "main")
     st.markdown('</div>', unsafe_allow_html=True)
 
 # -----------------------------------------
-# MAIN APP
+# EMAIL FUNCTION
 # -----------------------------------------
-else:
+def send_email(to_email, subject, body, image_path=None):
+    try:
+        sender_email = st.secrets["EMAIL"]
+        app_password = st.secrets["EMAIL_PASSWORD"]
+
+        msg = EmailMessage()
+        msg.set_content(body)
+        msg["Subject"] = subject
+        msg["From"] = sender_email
+        msg["To"] = to_email
+
+        if image_path and os.path.exists(image_path):
+            with open(image_path, "rb") as img:
+                msg.add_attachment(
+                    img.read(),
+                    maintype="image",
+                    subtype="jpeg",
+                    filename=os.path.basename(image_path)
+                )
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(sender_email, app_password)
+            smtp.send_message(msg)
+
+        return True
+
+    except Exception as e:
+        st.error(f"Email failed: {e}")
+        return False
+
+# -----------------------------------------
+# AFTER LOGIN
+# -----------------------------------------
+if st.session_state.get("authentication_status"):
 
     st.sidebar.title("👤 Dashboard")
-    menu = st.sidebar.radio("Menu", ["🏠 Home", "➕ Report", "📋 Records", "🎥 Detection"])
+    st.sidebar.markdown(f"### {st.session_state['name']}")
+    authenticator.logout("Logout", "sidebar")
 
-    # -----------------------------------------
-    # EMAIL FUNCTION
-    # -----------------------------------------
-    def send_email(to_email, subject, body):
-        try:
-            sender = "your_email@gmail.com"
-            password = "your_app_password"
-
-            msg = EmailMessage()
-            msg.set_content(body)
-            msg["Subject"] = subject
-            msg["From"] = sender
-            msg["To"] = to_email
-
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-                smtp.login(sender, password)
-                smtp.send_message(msg)
-
-        except:
-            pass
+    menu = st.sidebar.radio(
+        "Navigation",
+        ["🏠 Home", "➕ Report Missing Person", "📋 View Reports", "🎥 Live Detection"]
+    )
 
     # -----------------------------------------
     # HOME
     # -----------------------------------------
     if menu == "🏠 Home":
-        st.title("🧭 Missing Person Detection System")
-
-        st.markdown("""
-        <div class="card">
-        <h3>Welcome</h3>
-        <p>This system helps identify missing persons using face detection and sends alerts.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.header("Welcome")
+        st.write("AI-Based Missing Person Detection System")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # -----------------------------------------
     # REPORT
     # -----------------------------------------
-    elif menu == "➕ Report":
-
-        st.header("Report Missing Person")
+    elif menu == "➕ Report Missing Person":
+        st.markdown('<div class="card">', unsafe_allow_html=True)
 
         name = st.text_input("Name")
-        phone = st.text_input("Phone")
-        email = st.text_input("Family Email")
         image = st.file_uploader("Upload Image")
+        phone = st.text_input("Phone Number")
+        age = st.number_input("Age", min_value=1)
+        admin_email = st.text_input("Admin Email")
+        family_email = st.text_input("Family Email")
+        location = st.text_input("Location")
 
         if st.button("Submit"):
-            if name and phone and email and image:
+            if all([name, image, phone, age, admin_email, family_email, location]):
 
                 os.makedirs("data", exist_ok=True)
-                path = f"data/{name}.jpg"
+                file_path = f"data/{name}.jpg"
 
-                with open(path, "wb") as f:
+                with open(file_path, "wb") as f:
                     f.write(image.read())
 
                 data = {
                     "Name": name,
-                    "Phone": phone,
-                    "Email": email,
-                    "Image": path
+                    "Image Path": file_path,
+                    "Phone Number": phone,
+                    "Location": location,
+                    "Admin Email": admin_email,
+                    "Family Email": family_email
                 }
 
-                file = "data.csv"
+                csv_file = "missing_data.csv"
 
-                if os.path.exists(file):
-                    df = pd.read_csv(file)
-                    df = pd.concat([df, pd.DataFrame([data])])
+                if os.path.exists(csv_file):
+                    df = pd.read_csv(csv_file)
+                    df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
                 else:
                     df = pd.DataFrame([data])
 
-                df.to_csv(file, index=False)
-
-                st.success("Saved Successfully")
+                df.to_csv(csv_file, index=False)
+                st.success("Saved Successfully ✅")
 
             else:
                 st.error("Fill all fields")
 
-    # -----------------------------------------
-    # VIEW RECORDS
-    # -----------------------------------------
-    elif menu == "📋 Records":
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        st.header("Records")
+    # -----------------------------------------
+    # VIEW REPORTS
+    # -----------------------------------------
+    elif menu == "📋 View Reports":
+        st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        if os.path.exists("data.csv"):
-            df = pd.read_csv("data.csv")
+        if os.path.exists("missing_data.csv"):
+            df = pd.read_csv("missing_data.csv")
             st.dataframe(df)
+
         else:
-            st.warning("No records")
+            st.warning("No data available")
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # -----------------------------------------
-    # DETECTION (BASIC DEMO)
+    # LIVE DETECTION (DEMO)
     # -----------------------------------------
-    elif menu == "🎥 Detection":
+    elif menu == "🎥 Live Detection":
+        st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        st.header("Detection")
+        st.info("Demo detection (simulated)")
 
-        uploaded = st.file_uploader("Upload Person Image")
+        if os.path.exists("missing_data.csv"):
+            df = pd.read_csv("missing_data.csv")
 
-        if uploaded:
+            for _, row in df.iterrows():
+                st.success(f"Detected: {row['Name']}")
 
-            file_bytes = uploaded.read()
-            st.image(file_bytes)
+                subject = f"Alert: {row['Name']} Detected"
+                body = f"{row['Name']} may be found at {row['Location']}"
 
-            if os.path.exists("data.csv"):
-                df = pd.read_csv("data.csv")
+                send_email(row["Family Email"], subject, body)
 
-                for _, row in df.iterrows():
-                    st.success(f"Possible Match Found: {row['Name']}")
+        else:
+            st.warning("No data available")
 
-                    send_email(
-                        row["Email"],
-                        "Missing Person Found",
-                        f"{row['Name']} might be found."
-                    )
-            else:
-                st.warning("No data available")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# -----------------------------------------
+# LOGIN FAIL
+# -----------------------------------------
+elif st.session_state.get("authentication_status") is False:
+    st.error("Invalid Username or Password")
+
+else:
+    st.info("Please login")
