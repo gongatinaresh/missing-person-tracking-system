@@ -16,7 +16,7 @@ from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 import av
 
 # -------------------------------------------------
-# PREMIUM UI STYLE
+# PREMIUM UI STYLE (IMPROVED)
 # -------------------------------------------------
 st.markdown("""
 <style>
@@ -33,18 +33,23 @@ h1, h2, h3 {
     color: white;
 }
 
-/* CARD STYLE */
+/* CARD */
 .card {
-    padding: 25px;
-    border-radius: 15px;
+    padding: 30px;
+    border-radius: 18px;
     background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    text-align: center;
-    transition: 0.3s;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    margin-top: 20px;
 }
-.card:hover {
-    transform: scale(1.03);
+
+/* INPUT */
+div[data-baseweb="input"] {
+    background: rgba(255,255,255,0.15) !important;
+    border-radius: 10px !important;
+}
+input {
+    color: white !important;
 }
 
 /* BUTTON */
@@ -55,36 +60,25 @@ h1, h2, h3 {
     height: 45px;
     font-weight: bold;
     border: none;
+    width: 100%;
     box-shadow: 0 0 15px #00c6ff;
 }
 .stButton>button:hover {
     transform: scale(1.05);
 }
 
-/* INPUT */
-input, textarea {
-    background-color: rgba(255,255,255,0.1) !important;
-    color: white !important;
-    border-radius: 8px !important;
-}
-
 /* SIDEBAR */
 section[data-testid="stSidebar"] {
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.5);
     backdrop-filter: blur(10px);
 }
 
-/* HIDE STREAMLIT DEFAULT */
+/* REMOVE DEFAULT */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 
 </style>
 """, unsafe_allow_html=True)
-
-# -------------------------------------------------
-# TITLE
-# -------------------------------------------------
-st.markdown("<h1>🧭 Missing Persons Tracking System</h1>", unsafe_allow_html=True)
 
 # -------------------------------------------------
 # LOGIN SYSTEM
@@ -108,19 +102,23 @@ credentials = {
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
-# CENTER LOGIN
+# -------------------------------------------------
+# LOGIN UI FIXED (PROPER CENTER)
+# -------------------------------------------------
 col1, col2, col3 = st.columns([1,2,1])
+
 with col2:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
+    st.markdown("<h2>🧭 Missing Persons Tracking System</h2>", unsafe_allow_html=True)
+
     name, auth_status, username = authenticator.login("Login", "main")
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 if auth_status:
     st.success(f"Welcome {name}")
-
 elif auth_status is False:
     st.error("Invalid credentials")
-
 else:
     st.warning("Please login")
 
@@ -153,6 +151,7 @@ if st.session_state.get("authentication_status"):
 # ---------------- DASHBOARD ----------------
     if menu == "Dashboard":
 
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("📊 Dashboard")
 
         total = 0
@@ -165,7 +164,7 @@ if st.session_state.get("authentication_status"):
         col1.markdown(f"""
         <div class='card'>
             <h1>👥 {total}</h1>
-            <p>Total Missing Persons</p>
+            <p>Total Missing</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -183,9 +182,12 @@ if st.session_state.get("authentication_status"):
         </div>
         """, unsafe_allow_html=True)
 
+        st.markdown("</div>", unsafe_allow_html=True)
+
 # ---------------- REPORT ----------------
     elif menu == "Report":
 
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("➕ Report Missing Person")
 
         name = st.text_input("Name")
@@ -223,9 +225,12 @@ if st.session_state.get("authentication_status"):
             df.to_csv("missing_data.csv", index=False)
             st.success("Saved Successfully")
 
+        st.markdown("</div>", unsafe_allow_html=True)
+
 # ---------------- REPORTS ----------------
     elif menu == "Reports":
 
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("📋 Reports")
 
         if os.path.exists("missing_data.csv"):
@@ -236,9 +241,12 @@ if st.session_state.get("authentication_status"):
                 os.remove("missing_data.csv")
                 st.success("Cleared")
 
+        st.markdown("</div>", unsafe_allow_html=True)
+
 # ---------------- DETECTION ----------------
     elif menu == "Detection":
 
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("🎥 Live Detection")
 
         def match_faces(a,b):
@@ -272,3 +280,5 @@ if st.session_state.get("authentication_status"):
                 return img
 
         webrtc_streamer(key="cam",video_transformer_factory=Cam)
+
+        st.markdown("</div>", unsafe_allow_html=True)
