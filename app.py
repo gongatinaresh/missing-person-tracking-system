@@ -97,7 +97,7 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
-    st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
+    st.markdown("<div class='card'><h3>Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
     name, auth_status, username = authenticator.login("Login", "main")
 
 if auth_status:
@@ -150,11 +150,11 @@ if st.session_state.get("authentication_status"):
         col1, col2 = st.columns([2,1])
 
         with col1:
-            name = st.text_input("👤 Name")
-            phone = st.text_input("📞 Phone")
-            location = st.text_input("📍 Location")
-            admin_email = st.text_input("📧 Admin Email")
-            family_email = st.text_input("📧 Family Email")
+            name = st.text_input("Name")
+            phone = st.text_input("Phone")
+            location = st.text_input("Location")
+            admin_email = st.text_input("Admin Email")
+            family_email = st.text_input("Family Email")
 
         with col2:
             image = st.file_uploader("Upload Image")
@@ -173,7 +173,7 @@ if st.session_state.get("authentication_status"):
                 </div>
                 """, unsafe_allow_html=True)
 
-        if st.button("🚀 Submit Report"):
+        if st.button("Submit Report"):
             if image:
                 os.makedirs("data", exist_ok=True)
                 path = f"data/{name}.jpg"
@@ -197,10 +197,10 @@ if st.session_state.get("authentication_status"):
                     df = pd.DataFrame([data])
 
                 df.to_csv("missing_data.csv", index=False)
-                st.success("✅ Report Submitted")
+                st.success("Report Submitted")
 
     elif menu == "Reports":
-        st.markdown("<div class='card'><h3>📋 All Reports</h3></div>", unsafe_allow_html=True)
+        st.markdown("<div class='card'><h3>All Reports</h3></div>", unsafe_allow_html=True)
 
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
@@ -211,7 +211,7 @@ if st.session_state.get("authentication_status"):
                 st.success("Cleared")
 
     elif menu == "Detection":
-        st.markdown("<div class='card'><h3>🎥 Live Detection System</h3></div>", unsafe_allow_html=True)
+        st.markdown("<div class='card'><h3> Live Detection System</h3></div>", unsafe_allow_html=True)
 
         def match_faces(a,b):
             a=cv2.resize(a,(100,100))
