@@ -104,7 +104,6 @@ if st.session_state.get("authentication_status"):
         st.markdown("""
         <div class='card'>
             <h3>📍 Real-time Missing Person Identification & Monitoring Dashboard</h3>
-            <p>Centralized system for tracking, detection, and alerting</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -121,18 +120,13 @@ if st.session_state.get("authentication_status"):
         col2.markdown("<div class='card'><h1>🟢</h1><p>Detection Active</p></div>", unsafe_allow_html=True)
         col3.markdown("<div class='card'><h1>📧</h1><p>Alert System</p></div>", unsafe_allow_html=True)
 
-        st.markdown("<div class='card'><h3>📌 Recent Reports</h3></div>", unsafe_allow_html=True)
+        st.markdown("<div class='card'><h3>Recent Reports</h3></div>", unsafe_allow_html=True)
 
         if not df.empty:
             st.dataframe(df.tail(5))
         else:
             st.warning("No reports available")
 
-        st.markdown("""
-        <div class='card'>
-        This system identifies missing persons using face detection and sends alerts to authorities.
-        </div>
-        """, unsafe_allow_html=True)
 
 # ---------------- REPORT ----------------
     elif menu == "Report":
