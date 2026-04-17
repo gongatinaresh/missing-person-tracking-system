@@ -78,7 +78,7 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("<h2>🧭 Missing Persons Tracking System</h2>", unsafe_allow_html=True)
+    st.markdown("<h2>Missing Persons Tracking System</h2>", unsafe_allow_html=True)
     name, auth_status, username = authenticator.login("Login", "main")
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -108,7 +108,7 @@ if st.session_state.get("authentication_status"):
 
     if menu == "Dashboard":
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.subheader("📊 Dashboard")
+        st.subheader("Dashboard")
 
         total = 0
         if os.path.exists("missing_data.csv"):
@@ -118,8 +118,8 @@ if st.session_state.get("authentication_status"):
         col1, col2, col3 = st.columns(3)
 
         col1.markdown(f"<div class='card'><h1>{total}</h1><p>Total Missing</p></div>", unsafe_allow_html=True)
-        col2.markdown("<div class='card'><h1>📋</h1><p>Reports</p></div>", unsafe_allow_html=True)
-        col3.markdown("<div class='card'><h1>🚨</h1><p>Alerts</p></div>", unsafe_allow_html=True)
+        col2.markdown("<div class='card'><h1></h1><p>Reports</p></div>", unsafe_allow_html=True)
+        col3.markdown("<div class='card'><h1></h1><p>Alerts</p></div>", unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -154,7 +154,7 @@ if st.session_state.get("authentication_status"):
                 </div>
                 """, unsafe_allow_html=True)
 
-        if st.button("🚀 Submit Report"):
+        if st.button("Submit Report"):
             if image:
                 os.makedirs("data", exist_ok=True)
                 path = f"data/{name}.jpg"
@@ -178,13 +178,13 @@ if st.session_state.get("authentication_status"):
                     df = pd.DataFrame([data])
 
                 df.to_csv("missing_data.csv", index=False)
-                st.success("✅ Report Submitted")
+                st.success("Report Submitted")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
     elif menu == "Reports":
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.subheader("📋 Reports")
+        st.subheader("Reports")
 
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
@@ -198,7 +198,7 @@ if st.session_state.get("authentication_status"):
 
     elif menu == "Detection":
         st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.subheader("🎥 Live Detection")
+        st.subheader("Live Detection")
 
         def match_faces(a,b):
             a=cv2.resize(a,(100,100))
