@@ -14,43 +14,63 @@ import av
 
 st.markdown("""
 <style>
+.block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+.element-container:empty {
+    display: none !important;
+}
+.block-container > div:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
 .stApp {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
     font-family: 'Segoe UI', sans-serif;
 }
+
 h1, h2, h3 {
     text-align: center;
     color: white;
+    margin-bottom: 5px;
 }
+
 .card {
-    padding: 20px;
-    border-radius: 15px;
+    padding: 18px;
+    border-radius: 14px;
     background: rgba(255,255,255,0.08);
     backdrop-filter: blur(12px);
-    box-shadow: 0 6px 25px rgba(0,0,0,0.3);
-    margin-bottom: 15px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    margin-bottom: 10px;
 }
+
 div[data-baseweb="input"] {
-    background: rgba(255,255,255,0.15) !important;
+    background: rgba(255,255,255,0.12) !important;
     border-radius: 10px !important;
 }
+
 input {
     color: white !important;
 }
+
 .stButton>button {
     background: linear-gradient(90deg, #00c6ff, #0072ff);
     color: white;
-    border-radius: 12px;
-    height: 45px;
+    border-radius: 10px;
+    height: 42px;
     width: 100%;
     font-weight: bold;
     border: none;
-    box-shadow: 0 0 15px #00c6ff;
+    box-shadow: 0 0 12px #00c6ff;
 }
+
 section[data-testid="stSidebar"] {
     background: rgba(0,0,0,0.5);
     backdrop-filter: blur(10px);
 }
+
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 </style>
@@ -77,10 +97,8 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 col1, col2, col3 = st.columns([1,2,1])
 with col2:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("<h2>🧭 Missing Persons Tracking System</h2>", unsafe_allow_html=True)
+    st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
     name, auth_status, username = authenticator.login("Login", "main")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 if auth_status:
     st.success(f"Welcome {name}")
@@ -107,15 +125,13 @@ if st.session_state.get("authentication_status"):
 
     st.markdown(f"""
     <div class='card'>
-        <h3>🧭 Missing Persons Tracking System</h3>
-        <p>👤 Logged in as <b>{name}</b> | 🟢 System Active</p>
+        👤 Logged in as <b>{name}</b> | 🟢 System Active
     </div>
     """, unsafe_allow_html=True)
 
     menu = st.sidebar.radio("Navigation", ["Dashboard","Report","Reports","Detection"])
 
     if menu == "Dashboard":
-
         st.markdown("<div class='card'><h3>📊 Dashboard Overview</h3></div>", unsafe_allow_html=True)
 
         total = 0
@@ -124,13 +140,11 @@ if st.session_state.get("authentication_status"):
             total = len(df)
 
         col1, col2, col3 = st.columns(3)
-
         col1.markdown(f"<div class='card'><h1>{total}</h1><p>Total Missing</p></div>", unsafe_allow_html=True)
         col2.markdown("<div class='card'><h1>📋</h1><p>Reports</p></div>", unsafe_allow_html=True)
         col3.markdown("<div class='card'><h1>🚨</h1><p>Alerts</p></div>", unsafe_allow_html=True)
 
     elif menu == "Report":
-
         st.markdown("<div class='card'><h3>➕ Report Missing Person</h3></div>", unsafe_allow_html=True)
 
         col1, col2 = st.columns([2,1])
@@ -144,7 +158,6 @@ if st.session_state.get("authentication_status"):
 
         with col2:
             image = st.file_uploader("Upload Image")
-
             if image:
                 file_bytes = np.asarray(bytearray(image.read()), dtype=np.uint8)
                 img = cv2.imdecode(file_bytes, 1)
@@ -187,7 +200,6 @@ if st.session_state.get("authentication_status"):
                 st.success("✅ Report Submitted")
 
     elif menu == "Reports":
-
         st.markdown("<div class='card'><h3>📋 All Reports</h3></div>", unsafe_allow_html=True)
 
         if os.path.exists("missing_data.csv"):
@@ -199,7 +211,6 @@ if st.session_state.get("authentication_status"):
                 st.success("Cleared")
 
     elif menu == "Detection":
-
         st.markdown("<div class='card'><h3>🎥 Live Detection System</h3></div>", unsafe_allow_html=True)
 
         def match_faces(a,b):
