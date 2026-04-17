@@ -14,65 +14,32 @@ import av
 
 st.markdown("""
 <style>
-.block-container {
-    padding-top: 1rem !important;
-    padding-bottom: 1rem !important;
-}
-.element-container:empty {
-    display: none !important;
-}
-.block-container > div:first-child {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-}
-
+.block-container {padding-top: 1rem;}
+.element-container:empty {display:none;}
 .stApp {
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f2027,#203a43,#2c5364);
+    font-family: 'Segoe UI';
 }
-
-h1, h2, h3 {
-    text-align: center;
-    color: white;
-    margin-bottom: 5px;
-}
-
 .card {
-    padding: 18px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-    margin-bottom: 10px;
+    padding:18px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(12px);
+    box-shadow:0 6px 20px rgba(0,0,0,0.3);
+    margin-bottom:10px;
 }
-
-div[data-baseweb="input"] {
-    background: rgba(255,255,255,0.12) !important;
-    border-radius: 10px !important;
-}
-
-input {
-    color: white !important;
-}
-
+h1,h2,h3 {color:white;text-align:center;}
 .stButton>button {
-    background: linear-gradient(90deg, #00c6ff, #0072ff);
-    color: white;
-    border-radius: 10px;
-    height: 42px;
-    width: 100%;
-    font-weight: bold;
-    border: none;
-    box-shadow: 0 0 12px #00c6ff;
+    background:linear-gradient(90deg,#00c6ff,#0072ff);
+    color:white;
+    border-radius:10px;
+    height:42px;
+    width:100%;
 }
-
 section[data-testid="stSidebar"] {
     background: rgba(0,0,0,0.5);
-    backdrop-filter: blur(10px);
 }
-
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
+#MainMenu,footer {visibility:hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -95,10 +62,10 @@ credentials = {
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
-col1, col2, col3 = st.columns([1,2,1])
+col1,col2,col3 = st.columns([1,2,1])
 with col2:
-    st.markdown("<div class='card'><h3>Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
-    name, auth_status, username = authenticator.login("Login", "main")
+    st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
+    name, auth_status, username = authenticator.login("Login","main")
 
 if auth_status:
     st.success(f"Welcome {name}")
@@ -115,13 +82,13 @@ def send_email(to_email, subject, body):
     msg["Subject"] = subject
     msg["From"] = sender_email
     msg["To"] = to_email
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(sender_email, password)
+    with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
+        smtp.login(sender_email,password)
         smtp.send_message(msg)
 
 if st.session_state.get("authentication_status"):
 
-    authenticator.logout("Logout", "sidebar")
+    authenticator.logout("Logout","sidebar")
 
     st.markdown(f"""
     <div class='card'>
@@ -129,25 +96,50 @@ if st.session_state.get("authentication_status"):
     </div>
     """, unsafe_allow_html=True)
 
-    menu = st.sidebar.radio("Navigation", ["Dashboard","Report","Reports","Detection"])
+    menu = st.sidebar.radio("Navigation",["Dashboard","Report","Reports","Detection"])
 
+# ---------------- DASHBOARD ----------------
     if menu == "Dashboard":
-        st.markdown("<div class='card'><h3>📊 Dashboard Overview</h3></div>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class='card'>
+            <h3>📍 Real-time Missing Person Identification & Monitoring Dashboard</h3>
+            <p>Centralized system for tracking, detection, and alerting</p>
+        </div>
+        """, unsafe_allow_html=True)
 
         total = 0
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
             total = len(df)
+        else:
+            df = pd.DataFrame()
 
-        col1, col2, col3 = st.columns(3)
-        col1.markdown(f"<div class='card'><h1>{total}</h1><p>Total Missing</p></div>", unsafe_allow_html=True)
-        col2.markdown("<div class='card'><h1>📋</h1><p>Reports</p></div>", unsafe_allow_html=True)
-        col3.markdown("<div class='card'><h1>🚨</h1><p>Alerts</p></div>", unsafe_allow_html=True)
+        col1,col2,col3 = st.columns(3)
 
+        col1.markdown(f"<div class='card'><h1>{total}</h1><p>Total Cases</p></div>", unsafe_allow_html=True)
+        col2.markdown("<div class='card'><h1>🟢</h1><p>Detection Active</p></div>", unsafe_allow_html=True)
+        col3.markdown("<div class='card'><h1>📧</h1><p>Alert System</p></div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='card'><h3>📌 Recent Reports</h3></div>", unsafe_allow_html=True)
+
+        if not df.empty:
+            st.dataframe(df.tail(5))
+        else:
+            st.warning("No reports available")
+
+        st.markdown("""
+        <div class='card'>
+        This system identifies missing persons using face detection and sends alerts to authorities.
+        </div>
+        """, unsafe_allow_html=True)
+
+# ---------------- REPORT ----------------
     elif menu == "Report":
+
         st.markdown("<div class='card'><h3>➕ Report Missing Person</h3></div>", unsafe_allow_html=True)
 
-        col1, col2 = st.columns([2,1])
+        col1,col2 = st.columns([2,1])
 
         with col1:
             name = st.text_input("Name")
@@ -158,60 +150,65 @@ if st.session_state.get("authentication_status"):
 
         with col2:
             image = st.file_uploader("Upload Image")
+
             if image:
-                file_bytes = np.asarray(bytearray(image.read()), dtype=np.uint8)
-                img = cv2.imdecode(file_bytes, 1)
+                img_bytes = np.asarray(bytearray(image.read()), dtype=np.uint8)
+                img = cv2.imdecode(img_bytes,1)
                 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                img = cv2.resize(img, (150,150))
-                _, buffer = cv2.imencode('.jpg', img)
+                img = cv2.resize(img,(150,150))
+                _,buffer = cv2.imencode('.jpg',img)
                 img_str = base64.b64encode(buffer).decode()
 
                 st.markdown(f"""
                 <div style="display:flex;justify-content:center;">
-                    <img src="data:image/jpeg;base64,{img_str}"
-                    style="border-radius:50%; width:150px; height:150px; border:3px solid #00c6ff;">
+                <img src="data:image/jpeg;base64,{img_str}"
+                style="border-radius:50%; width:150px; height:150px;">
                 </div>
                 """, unsafe_allow_html=True)
 
-        if st.button("Submit Report"):
+        if st.button("Submit"):
             if image:
-                os.makedirs("data", exist_ok=True)
-                path = f"data/{name}.jpg"
+                os.makedirs("data",exist_ok=True)
+                path=f"data/{name}.jpg"
 
-                with open(path, "wb") as f:
+                with open(path,"wb") as f:
                     f.write(image.getbuffer())
 
-                data = {
-                    "Name": name,
-                    "Image Path": path,
-                    "Phone": phone,
-                    "Location": location,
-                    "Admin Email": admin_email,
-                    "Family Email": family_email
+                data={
+                    "Name":name,
+                    "Image Path":path,
+                    "Phone":phone,
+                    "Location":location,
+                    "Admin Email":admin_email,
+                    "Family Email":family_email
                 }
 
                 if os.path.exists("missing_data.csv"):
-                    df = pd.read_csv("missing_data.csv")
-                    df = pd.concat([df, pd.DataFrame([data])])
+                    df=pd.read_csv("missing_data.csv")
+                    df=pd.concat([df,pd.DataFrame([data])])
                 else:
-                    df = pd.DataFrame([data])
+                    df=pd.DataFrame([data])
 
-                df.to_csv("missing_data.csv", index=False)
-                st.success("Report Submitted")
+                df.to_csv("missing_data.csv",index=False)
+                st.success("Saved")
 
+# ---------------- REPORTS ----------------
     elif menu == "Reports":
-        st.markdown("<div class='card'><h3>All Reports</h3></div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='card'><h3>📋 Reports</h3></div>", unsafe_allow_html=True)
 
         if os.path.exists("missing_data.csv"):
-            df = pd.read_csv("missing_data.csv")
+            df=pd.read_csv("missing_data.csv")
             st.dataframe(df)
 
-            if st.button("🗑 Clear Reports"):
+            if st.button("Clear Reports"):
                 os.remove("missing_data.csv")
                 st.success("Cleared")
 
+# ---------------- DETECTION ----------------
     elif menu == "Detection":
-        st.markdown("<div class='card'><h3> Live Detection System</h3></div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='card'><h3>🎥 Live Detection</h3></div>", unsafe_allow_html=True)
 
         def match_faces(a,b):
             a=cv2.resize(a,(100,100))
@@ -219,7 +216,7 @@ if st.session_state.get("authentication_status"):
             return np.mean((a-b)**2)<2000
 
         if os.path.exists("missing_data.csv"):
-            df = pd.read_csv("missing_data.csv")
+            df=pd.read_csv("missing_data.csv")
         else:
             df=None
 
@@ -242,4 +239,4 @@ if st.session_state.get("authentication_status"):
                         cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
                 return img
 
-        webrtc_streamer(key="cam", video_transformer_factory=Cam)
+        webrtc_streamer(key="cam",video_transformer_factory=Cam)
