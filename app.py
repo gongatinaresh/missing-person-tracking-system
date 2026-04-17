@@ -6,34 +6,22 @@ import pandas as pd
 import os
 import cv2
 import numpy as np
-
-# Email
+import base64
 import smtplib
 from email.message import EmailMessage
-
-# Camera
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 import av
 
-# -------------------------------------------------
-# PREMIUM UI STYLE (IMPROVED)
-# -------------------------------------------------
 st.markdown("""
 <style>
-
-/* BACKGROUND */
 .stApp {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
     font-family: 'Segoe UI', sans-serif;
 }
-
-/* HEADINGS */
 h1, h2, h3 {
     text-align: center;
     color: white;
 }
-
-/* CARD */
 .card {
     padding: 30px;
     border-radius: 18px;
@@ -42,8 +30,6 @@ h1, h2, h3 {
     box-shadow: 0 10px 40px rgba(0,0,0,0.4);
     margin-top: 20px;
 }
-
-/* INPUT */
 div[data-baseweb="input"] {
     background: rgba(255,255,255,0.15) !important;
     border-radius: 10px !important;
@@ -51,38 +37,25 @@ div[data-baseweb="input"] {
 input {
     color: white !important;
 }
-
-/* BUTTON */
 .stButton>button {
     background: linear-gradient(90deg, #00c6ff, #0072ff);
     color: white;
     border-radius: 12px;
     height: 45px;
+    width: 100%;
     font-weight: bold;
     border: none;
-    width: 100%;
     box-shadow: 0 0 15px #00c6ff;
 }
-.stButton>button:hover {
-    transform: scale(1.05);
-}
-
-/* SIDEBAR */
 section[data-testid="stSidebar"] {
     background: rgba(0,0,0,0.5);
     backdrop-filter: blur(10px);
 }
-
-/* REMOVE DEFAULT */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------------------------------------
-# LOGIN SYSTEM
-# -------------------------------------------------
 with open("login_info.txt", "r") as f:
     lines = f.readlines()
 
@@ -102,17 +75,11 @@ credentials = {
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
-# -------------------------------------------------
-# LOGIN UI FIXED (PROPER CENTER)
-# -------------------------------------------------
 col1, col2, col3 = st.columns([1,2,1])
-
 with col2:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("<h2>🧭 Missing Persons Tracking System</h2>", unsafe_allow_html=True)
-
     name, auth_status, username = authenticator.login("Login", "main")
-
     st.markdown("</div>", unsafe_allow_html=True)
 
 if auth_status:
@@ -122,35 +89,24 @@ elif auth_status is False:
 else:
     st.warning("Please login")
 
-# -------------------------------------------------
-# EMAIL FUNCTION
-# -------------------------------------------------
 def send_email(to_email, subject, body):
     sender_email = st.secrets["EMAIL"]
     password = st.secrets["EMAIL_PASSWORD"]
-
     msg = EmailMessage()
     msg.set_content(body)
     msg["Subject"] = subject
     msg["From"] = sender_email
     msg["To"] = to_email
-
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(sender_email, password)
         smtp.send_message(msg)
 
-# -------------------------------------------------
-# MAIN APP
-# -------------------------------------------------
 if st.session_state.get("authentication_status"):
 
     authenticator.logout("Logout", "sidebar")
-
     menu = st.sidebar.radio("Navigation", ["Dashboard","Report","Reports","Detection"])
 
-# ---------------- DASHBOARD ----------------
     if menu == "Dashboard":
-
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("📊 Dashboard")
 
@@ -161,75 +117,72 @@ if st.session_state.get("authentication_status"):
 
         col1, col2, col3 = st.columns(3)
 
-        col1.markdown(f"""
-        <div class='card'>
-            <h1>👥 {total}</h1>
-            <p>Total Missing</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col2.markdown("""
-        <div class='card'>
-            <h1>📋</h1>
-            <p>Reports</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col3.markdown("""
-        <div class='card'>
-            <h1>🚨</h1>
-            <p>Alerts</p>
-        </div>
-        """, unsafe_allow_html=True)
+        col1.markdown(f"<div class='card'><h1>{total}</h1><p>Total Missing</p></div>", unsafe_allow_html=True)
+        col2.markdown("<div class='card'><h1>📋</h1><p>Reports</p></div>", unsafe_allow_html=True)
+        col3.markdown("<div class='card'><h1>🚨</h1><p>Alerts</p></div>", unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------------- REPORT ----------------
     elif menu == "Report":
-
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("➕ Report Missing Person")
 
-        name = st.text_input("Name")
-        image = st.file_uploader("Upload Image")
-        phone = st.text_input("Phone")
-        location = st.text_input("Location")
-        admin_email = st.text_input("Admin Email")
-        family_email = st.text_input("Family Email")
+        col1, col2 = st.columns([2,1])
 
-        if image:
-            st.image(image)
+        with col1:
+            name = st.text_input("👤 Name")
+            phone = st.text_input("📞 Phone")
+            location = st.text_input("📍 Location")
+            admin_email = st.text_input("📧 Admin Email")
+            family_email = st.text_input("📧 Family Email")
 
-        if st.button("Submit"):
-            os.makedirs("data", exist_ok=True)
-            path = f"data/{name}.jpg"
+        with col2:
+            image = st.file_uploader("Upload Image")
 
-            with open(path, "wb") as f:
-                f.write(image.read())
+            if image:
+                file_bytes = np.asarray(bytearray(image.read()), dtype=np.uint8)
+                img = cv2.imdecode(file_bytes, 1)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img = cv2.resize(img, (150,150))
+                _, buffer = cv2.imencode('.jpg', img)
+                img_str = base64.b64encode(buffer).decode()
 
-            data = {
-                "Name": name,
-                "Image Path": path,
-                "Phone": phone,
-                "Location": location,
-                "Admin Email": admin_email,
-                "Family Email": family_email
-            }
+                st.markdown(f"""
+                <div style="display:flex;justify-content:center;">
+                    <img src="data:image/jpeg;base64,{img_str}"
+                    style="border-radius:50%; width:150px; height:150px; border:3px solid #00c6ff;">
+                </div>
+                """, unsafe_allow_html=True)
 
-            if os.path.exists("missing_data.csv"):
-                df = pd.read_csv("missing_data.csv")
-                df = pd.concat([df, pd.DataFrame([data])])
-            else:
-                df = pd.DataFrame([data])
+        if st.button("🚀 Submit Report"):
+            if image:
+                os.makedirs("data", exist_ok=True)
+                path = f"data/{name}.jpg"
 
-            df.to_csv("missing_data.csv", index=False)
-            st.success("Saved Successfully")
+                with open(path, "wb") as f:
+                    f.write(image.getbuffer())
+
+                data = {
+                    "Name": name,
+                    "Image Path": path,
+                    "Phone": phone,
+                    "Location": location,
+                    "Admin Email": admin_email,
+                    "Family Email": family_email
+                }
+
+                if os.path.exists("missing_data.csv"):
+                    df = pd.read_csv("missing_data.csv")
+                    df = pd.concat([df, pd.DataFrame([data])])
+                else:
+                    df = pd.DataFrame([data])
+
+                df.to_csv("missing_data.csv", index=False)
+                st.success("✅ Report Submitted")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------------- REPORTS ----------------
     elif menu == "Reports":
-
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("📋 Reports")
 
@@ -243,9 +196,7 @@ if st.session_state.get("authentication_status"):
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------------- DETECTION ----------------
     elif menu == "Detection":
-
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.subheader("🎥 Live Detection")
 
@@ -273,12 +224,11 @@ if st.session_state.get("authentication_status"):
                             db=cv2.imread(r["Image Path"])
                             if db is not None and match_faces(f,db):
                                 cv2.putText(img,r["Name"],(x,y-10),1,1,(0,255,0),2)
-
                                 send_email(r["Admin Email"],"Alert",r["Name"])
                                 break
                         cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
                 return img
 
-        webrtc_streamer(key="cam",video_transformer_factory=Cam)
+        webrtc_streamer(key="cam", video_transformer_factory=Cam)
 
         st.markdown("</div>", unsafe_allow_html=True)
