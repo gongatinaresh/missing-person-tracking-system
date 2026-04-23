@@ -10,8 +10,8 @@ import base64
 import smtplib
 from email.message import EmailMessage
 
-# ---------------- UI STYLE ----------------
-st.set_page_config(layout="wide")
+# ---------------- UI CONFIG ----------------
+st.set_page_config(page_title="Missing Person System", layout="wide")
 
 st.markdown("""
 <style>
@@ -54,12 +54,13 @@ if auth_status:
     st.success(f"Welcome {name}")
 elif auth_status is False:
     st.error("Invalid credentials")
+    st.stop()
 else:
     st.stop()
 
 authenticator.logout("Logout", "sidebar")
 
-# ---------------- EMAIL FUNCTION ----------------
+# ---------------- EMAIL ----------------
 def send_email(to_email, subject, body):
     try:
         sender = st.secrets["EMAIL"]
@@ -83,7 +84,7 @@ menu = st.sidebar.radio("Navigation", ["Dashboard", "Report", "Reports", "Detect
 # ================= DASHBOARD =================
 if menu == "Dashboard":
 
-    st.markdown("<div class='card'><h3>Dashboard</h3></div>", unsafe_allow_html=True)
+    st.markdown("<div class='card'><h3>📊 Dashboard</h3></div>", unsafe_allow_html=True)
 
     if os.path.exists("missing_data.csv"):
         df = pd.read_csv("missing_data.csv")
@@ -92,11 +93,12 @@ if menu == "Dashboard":
         df = pd.DataFrame()
         total = 0
 
-    col1, col2, col3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Cases", total)
+    c2.metric("System Status", "Active")
+    c3.metric("Alerts", "Enabled")
 
-    col1.metric("Total Cases", total)
-    col2.metric("System Status", "Active")
-    col3.metric("Alerts", "Enabled")
+    st.markdown("<div class='card'><h3>Recent Reports</h3></div>", unsafe_allow_html=True)
 
     if not df.empty:
         st.dataframe(df.tail(5))
@@ -106,7 +108,7 @@ if menu == "Dashboard":
 # ================= REPORT =================
 elif menu == "Report":
 
-    st.markdown("<div class='card'><h3>Report Missing Person</h3></div>", unsafe_allow_html=True)
+    st.markdown("<div class='card'><h3>➕ Report Missing Person</h3></div>", unsafe_allow_html=True)
 
     name = st.text_input("Name")
     phone = st.text_input("Phone")
@@ -116,7 +118,7 @@ elif menu == "Report":
     image = st.file_uploader("Upload Image")
 
     if image:
-        st.image(image)
+        st.image(image, caption="Preview")
 
     if st.button("Save"):
         if image:
@@ -146,7 +148,7 @@ elif menu == "Report":
 # ================= REPORTS =================
 elif menu == "Reports":
 
-    st.markdown("<div class='card'><h3>All Reports</h3></div>", unsafe_allow_html=True)
+    st.markdown("<div class='card'><h3>📋 All Reports</h3></div>", unsafe_allow_html=True)
 
     if os.path.exists("missing_data.csv"):
         df = pd.read_csv("missing_data.csv")
@@ -155,7 +157,7 @@ elif menu == "Reports":
 # ================= DETECTION =================
 elif menu == "Detection":
 
-    st.markdown("<div class='card'><h3>Live Detection</h3></div>", unsafe_allow_html=True)
+    st.markdown("<div class='card'><h3>🎯 Detection</h3></div>", unsafe_allow_html=True)
 
     def match_faces(a, b):
         a = cv2.resize(a, (100,100))
@@ -168,65 +170,56 @@ elif menu == "Detection":
     else:
         df = None
 
-    FRAME = st.empty()
-    RESULT = st.empty()
+    uploaded = st.file_uploader("Upload Image for Detection")
 
-    cap = cv2.VideoCapture(0)
+    if uploaded:
+        img_bytes = np.asarray(bytearray(uploaded.read()), dtype=np.uint8)
+        frame = cv2.imdecode(img_bytes, 1)
 
-    if st.button("Start Detection"):
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
 
-        sent = False
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
+        match_img = None
+        match_name = None
+        match_score = None
 
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            face_cascade = cv2.CascadeClassifier(
-                cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-            )
+        if df is not None:
+            for (x,y,w,h) in faces:
+                face = frame[y:y+h, x:x+w]
 
-            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+                for _, row in df.iterrows():
+                    db = cv2.imread(row["Image Path"])
 
-            match_img = None
-            match_name = None
+                    if db is not None:
+                        score, matched = match_faces(face, db)
 
-            if df is not None:
-                for (x,y,w,h) in faces:
-                    face = frame[y:y+h, x:x+w]
+                        if matched:
+                            match_img = db
+                            match_name = row["Name"]
+                            match_score = score
 
-                    for _, row in df.iterrows():
-                        db = cv2.imread(row["Image Path"])
+                            cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
+                            cv2.putText(frame, match_name,(x,y-10),
+                                        cv2.FONT_HERSHEY_SIMPLEX,0.9,(0,255,0),2)
+                            break
 
-                        if db is not None:
-                            score, matched = match_faces(face, db)
+        col1, col2 = st.columns(2)
 
-                            if matched:
-                                match_img = db
-                                match_name = row["Name"]
+        with col1:
+            st.image(frame, channels="BGR", caption="Live Image")
 
-                                cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
-                                cv2.putText(frame, match_name,(x,y-10),1,1,(0,255,0),2)
+        with col2:
+            if match_img is not None:
+                st.image(match_img, channels="BGR", caption="Matched Image")
+                st.success(f"✔ Match Found: {match_name}")
+                st.write(f"Similarity Score: {round(match_score,2)}")
 
-                                if not sent:
-                                    send_email(row["Email"], "Match Found", f"{match_name} detected")
-                                    sent = True
-                                break
-
-            FRAME.image(frame, channels="BGR")
-
-            with RESULT.container():
-                c1, c2 = st.columns(2)
-
-                with c1:
-                    st.image(frame, channels="BGR", caption="Live Image")
-
-                with c2:
-                    if match_img is not None:
-                        st.image(match_img, channels="BGR", caption="Matched Image")
-                        st.success(f"Match Found: {match_name}")
-                    else:
-                        st.warning("No Match")
-
-    cap.release()
+                if st.button("Send Alert"):
+                    send_email(row["Email"], "Match Found", f"{match_name} detected")
+                    st.success("Email Sent")
+            else:
+                st.warning("❌ No Match Found")
