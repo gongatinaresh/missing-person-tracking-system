@@ -4,6 +4,7 @@ import os
 import cv2
 import numpy as np
 import smtplib
+import base64
 from email.message import EmailMessage
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 import pickle
@@ -23,18 +24,20 @@ section[data-testid="stSidebar"] {background:#020617;color:white;}
     background:#020617;color:white;
     padding:12px;border-radius:8px;
     margin-bottom:15px;
-    display:flex;justify-content:space-between;
 }
 
 .card {
     background:#1e293b;padding:18px;
     border-radius:12px;color:white;
-    box-shadow:0 4px 12px rgba(0,0,0,0.4);
     margin-bottom:10px;
 }
 
-.metric {text-align:center;}
-.match-box {text-align:center;color:#22c55e;font-weight:bold;font-size:20px;}
+.match-box {
+    text-align:center;
+    color:#22c55e;
+    font-weight:bold;
+    font-size:22px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -58,7 +61,7 @@ credentials = {
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
-name, auth_status, username = authenticator.login("Login", "main")
+name, auth_status, username = authenticator.login("Login","main")
 
 if auth_status is False:
     st.error("Invalid Username or Password")
@@ -71,7 +74,6 @@ elif auth_status is None:
 if auth_status:
 
     authenticator.logout("Logout", "sidebar")
-
     st.success(f"Welcome {name}")
 
     # ================= EMAIL =================
@@ -88,7 +90,7 @@ MATCH FOUND 🚨
 Name: {person_data['Name']}
 Phone: {person_data['Phone']}
 Last Seen: {person_data['Location']}
-            """
+"""
 
             msg.set_content(body)
             msg["Subject"] = subject
@@ -114,27 +116,21 @@ Last Seen: {person_data['Location']}
     else:
         df = pd.DataFrame()
 
-    # ================= SIDEBAR =================
     menu = st.sidebar.radio("Menu",["Dashboard","Report","Reports","Detection"])
-
-    # ================= TOPBAR =================
-    st.markdown(f"""
-    <div class='topbar'>
-    Missing Person System | 🟢 Active | ⏰ {pd.Timestamp.now().strftime("%H:%M:%S")}
-    </div>
-    """, unsafe_allow_html=True)
 
     # ================= DASHBOARD =================
     if menu == "Dashboard":
 
+        st.markdown("<div class='topbar'>Missing Person System | Active</div>", unsafe_allow_html=True)
+
         total = len(df)
 
         c1,c2,c3 = st.columns(3)
-        c1.markdown(f"<div class='card metric'><h2>{total}</h2>Total</div>", unsafe_allow_html=True)
-        c2.markdown("<div class='card metric'><h2>🟢</h2>Detection</div>", unsafe_allow_html=True)
-        c3.markdown("<div class='card metric'><h2>📧</h2>Alerts</div>", unsafe_allow_html=True)
+        c1.metric("Total Records", total)
+        c2.metric("Detection", "Active")
+        c3.metric("Alerts", "Enabled")
 
-        st.markdown("<div class='card'><h3>Match Result</h3></div>", unsafe_allow_html=True)
+        st.markdown("## 🔍 Match Result")
 
         col1,col2,col3 = st.columns([2,1,2])
 
@@ -153,7 +149,9 @@ Last Seen: {person_data['Location']}
     # ================= REPORT =================
     elif menu == "Report":
 
-        col1,col2 = st.columns([2,1])
+        st.markdown("## 📋 Report Missing Person")
+
+        col1, col2 = st.columns([2,1])
 
         with col1:
             name_input = st.text_input("Name")
@@ -163,26 +161,52 @@ Last Seen: {person_data['Location']}
 
         with col2:
             image = st.file_uploader("Upload Image")
+            if image:
+                st.image(image)
 
         if st.button("Submit"):
-            if image:
-                os.makedirs("data",exist_ok=True)
-                path=f"data/{name_input}.jpg"
 
-                with open(path,"wb") as f:
+            if image:
+
+                os.makedirs("data", exist_ok=True)
+                path = f"data/{name_input}.jpg"
+
+                with open(path, "wb") as f:
                     f.write(image.getbuffer())
 
                 new = pd.DataFrame([{
-                    "Name":name_input,
-                    "Image Path":path,
-                    "Phone":phone,
-                    "Location":location,
-                    "Email":email
+                    "Name": name_input,
+                    "Image Path": path,
+                    "Phone": phone,
+                    "Location": location,
+                    "Email": email
                 }])
 
-                df = pd.concat([df,new])
-                df.to_csv("missing_data.csv",index=False)
-                st.success("Saved")
+                if os.path.exists("missing_data.csv"):
+                    df = pd.read_csv("missing_data.csv")
+                    df = pd.concat([df, new])
+                else:
+                    df = new
+
+                df.to_csv("missing_data.csv", index=False)
+
+                st.success("Saved Successfully")
+
+                # PROFILE DISPLAY
+                img = cv2.imread(path)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                _, buffer = cv2.imencode('.jpg', img)
+                img_str = base64.b64encode(buffer).decode()
+
+                st.markdown(f"""
+                <div style="text-align:center;">
+                    <img src="data:image/jpeg;base64,{img_str}"
+                    style="border-radius:50%; width:180px; height:180px;">
+                    <h3 style="color:white;">{name_input}</h3>
+                    <p style="color:gray;">📍 {location}</p>
+                    <p style="color:gray;">📞 {phone}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
     # ================= REPORTS =================
     elif menu == "Reports":
@@ -233,16 +257,13 @@ Last Seen: {person_data['Location']}
                                 send_email(row["Email"], "Match Found", row, face_img)
                                 st.session_state["last_email"] = row["Name"]
 
-                            cv2.putText(img,row["Name"],(x,y-10),1,1,(0,255,0),2)
                             break
-
-                    cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
 
                 return img
 
         webrtc_streamer(key="cam", video_transformer_factory=Cam)
 
-        # SHOW RESULT CENTER
+        # SHOW MATCH RESULT CENTER
         if "live_img" in st.session_state:
 
             st.markdown("## 🔍 Match Result")
