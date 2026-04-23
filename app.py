@@ -65,34 +65,29 @@ credentials = {
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 # ✅ PASTE HERE 👇
-if not st.session_state.get("authentication_status"):
+auth_status = st.session_state.get("authentication_status")
 
-    st.markdown("""
-    <style>
-    ...
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<div class='overlay'></div>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <h1 style='text-align:center;color:white;margin-top:40px;'>
-    MISSING PERSON TRACKING SYSTEM
-    </h1>
-    """, unsafe_allow_html=True)
-
+if auth_status is None:
+    # SHOW LOGIN UI
     col1, col2, col3 = st.columns([1,1.2,1])
 
-with col2:
-    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
+    with col2:
+        st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
-    st.markdown("<div class='subtitle'>Admin Login</div>", unsafe_allow_html=True)
+        st.markdown("<div class='subtitle'>Admin Login</div>", unsafe_allow_html=True)
 
-    name, auth_status, username = authenticator.login("Login","main")
+        name, auth_status, username = authenticator.login("Login","main")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.stop()
+
+elif auth_status is False:
+    st.error("❌ Invalid Username or Password")
+    st.stop()
+
+elif auth_status is True:
+    pass  # continue to dashboard
 # ---------- EMAIL ----------
 def send_email(to_email, name, location, phone, image_path):
     try:
