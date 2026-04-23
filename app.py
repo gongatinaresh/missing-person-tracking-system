@@ -59,7 +59,7 @@ credentials = {
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
-col1,col2,col3 = st.columns([1,2,1])
+col1, col2, col3 = st.columns([1,2,1])
 with col2:
     st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
     name, auth_status, username = authenticator.login("Login","main")
@@ -72,22 +72,48 @@ else:
     st.warning("Please login")
 
 # ---------- EMAIL ----------
-def send_email(to_email, subject, body):
+def send_email(to_email, name, location, phone, image_path):
     try:
         sender = st.secrets["EMAIL"]
         password = st.secrets["EMAIL_PASSWORD"]
 
         msg = EmailMessage()
-        msg.set_content(body)
-        msg["Subject"] = subject
+        msg["Subject"] = "🚨 Missing Person Detected"
         msg["From"] = sender
         msg["To"] = to_email
 
-        with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
-            smtp.login(sender,password)
+        body = f"""
+ALERT: Missing Person Detected
+
+Name: {name}
+Last Seen Location: {location}
+Contact Number: {phone}
+
+The system has detected a possible match in live camera feed.
+Please verify immediately.
+
+- Missing Person Tracking System
+"""
+        msg.set_content(body)
+
+        if os.path.exists(image_path):
+            with open(image_path, "rb") as f:
+                file_data = f.read()
+                file_name = os.path.basename(image_path)
+
+                msg.add_attachment(
+                    file_data,
+                    maintype="image",
+                    subtype="jpeg",
+                    filename=file_name
+                )
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(sender, password)
             smtp.send_message(msg)
-    except:
-        pass
+
+    except Exception as e:
+        print("Email Error:", e)
 
 # ---------- MAIN ----------
 if st.session_state.get("authentication_status"):
@@ -257,7 +283,13 @@ if st.session_state.get("authentication_status"):
                                 st.session_state["status"] = "MATCH FOUND"
 
                                 if emails[i] not in sent:
-                                    send_email(emails[i],"Alert",names[i])
+                                    send_email(
+                                        emails[i],
+                                        names[i],
+                                        df.iloc[i]["Location"],
+                                        df.iloc[i]["Phone"],
+                                        "temp/live.jpg"
+                                    )
                                     sent.add(emails[i])
 
                                 break
