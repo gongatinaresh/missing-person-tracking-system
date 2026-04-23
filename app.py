@@ -288,65 +288,80 @@ if st.session_state.get("authentication_status"):
             st.warning("No reports available")
 
     # ---------------- DETECTION ----------------
-    elif menu == "Detection":
+  elif menu == "Detection":
 
-        st.subheader("Live Detection")
+    st.subheader("📷 Live Detection")
 
-        if not os.path.exists("missing_data.csv"):
-            st.warning("No data available")
-        else:
-            df = pd.read_csv("missing_data.csv")
+    if not os.path.exists("missing_data.csv"):
+        st.warning("No data available")
+    else:
+        df = pd.read_csv("missing_data.csv")
 
-            known = []
-            names = []
-            emails = []
+        known = []
+        names = []
+        emails = []
 
-            for _, r in df.iterrows():
-                img = cv2.imread(r["Image Path"])
-                if img is not None:
-                    img = cv2.resize(img,(100,100))
-                    known.append(img)
-                    names.append(r["Name"])
-                    emails.append(r["Admin Email"])
+        for _, r in df.iterrows():
+            img = cv2.imread(r["Image Path"])
+            if img is not None:
+                img = cv2.resize(img,(100,100))
+                known.append(img)
+                names.append(r["Name"])
+                emails.append(r["Admin Email"])
 
-            os.makedirs("temp",exist_ok=True)
-            sent=set()
+        os.makedirs("temp",exist_ok=True)
+        sent=set()
 
-            def match(a,b):
-                return np.mean((a-b)**2) < 2000
+        def match(a,b):
+            return np.mean((a-b)**2) < 2000
 
-            class Cam(VideoTransformerBase):
-                def transform(self,frame):
-                    img = frame.to_ndarray(format="bgr24")
-                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # 🔥 USE STREAMLIT CAMERA (STABLE)
+        cam = st.camera_input("Take Photo")
 
-                    face = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
-                    faces = face.detectMultiScale(gray,1.3,5)
+        if cam:
+            img = np.asarray(bytearray(cam.read()), dtype=np.uint8)
+            img = cv2.imdecode(img,1)
 
-                    for (x,y,w,h) in faces:
-                        f = cv2.resize(img[y:y+h,x:x+w],(100,100))
-                        cv2.imwrite("temp/live.jpg", img)
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            face = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
+            faces = face.detectMultiScale(gray,1.3,5)
 
-                        for i, db in enumerate(known):
-                            if match(f, db):
+            found = False
 
-                                cv2.imwrite("temp/match.jpg", db)
-                                st.session_state["status"] = "MATCH FOUND"
+            for (x,y,w,h) in faces:
+                f = cv2.resize(img[y:y+h,x:x+w],(100,100))
 
-                                if emails[i] not in sent:
-                                    send_email(
-                                        emails[i],
-                                        names[i],
-                                        df.iloc[i]["Location"],
-                                        df.iloc[i]["Phone"],
-                                        "temp/live.jpg"
-                                    )
-                                    sent.add(emails[i])
+                cv2.imwrite("temp/live.jpg", img)
 
-                                break
+                for i, db in enumerate(known):
+                    if match(f, db):
 
-                        cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+                        cv2.imwrite("temp/match.jpg", db)
+                        st.session_state["status"] = "MATCH FOUND"
 
-                    return img
+                        if emails[i] not in sent:
+                            send_email(
+                                emails[i],
+                                names[i],
+                                df.iloc[i]["Location"],
+                                df.iloc[i]["Phone"],
+                                "temp/live.jpg"
+                            )
+                            sent.add(emails[i])
 
-            webrtc_streamer(key="cam", video_transformer_factory=Cam)
+                        found = True
+                        break
+
+                # 🔥 DRAW RECTANGLE
+                cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+
+                if found:
+                    cv2.putText(img, names[i], (x, y-10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.9,
+                                (0,255,0), 2)
+
+            if not found:
+                st.session_state["status"] = "NO MATCH"
+
+            # 🔥 SHOW RESULT
+            st.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), caption="Detection Result")
