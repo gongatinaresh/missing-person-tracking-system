@@ -7,6 +7,13 @@ from datetime import datetime
 import smtplib
 from email.message import EmailMessage
 
+# OPTIONAL DeepFace
+try:
+    from deepface import DeepFace
+    DEEPFACE_AVAILABLE = True
+except:
+    DEEPFACE_AVAILABLE = False
+
 st.set_page_config(layout="wide")
 
 # ================= LOGIN =================
@@ -14,6 +21,18 @@ if "login" not in st.session_state:
     st.session_state.login = False
 
 if not st.session_state.login:
+
+    st.markdown("""
+    <style>
+    .stApp {background: linear-gradient(135deg,#0f172a,#1e293b);}
+    .login-box {
+        width:350px;margin:auto;margin-top:120px;
+        padding:30px;background:#1e293b;
+        border-radius:12px;text-align:center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     st.markdown("<h1 style='text-align:center;'>🧭 Missing Person Tracking System</h1>", unsafe_allow_html=True)
 
     user = st.text_input("Username")
@@ -25,26 +44,27 @@ if not st.session_state.login:
             st.rerun()
         else:
             st.error("Invalid Credentials")
+
     st.stop()
 
-# ================= UI =================
+# ================= STYLE =================
 st.markdown("""
 <style>
-.stApp {background:linear-gradient(135deg,#0f172a,#1e293b);color:white;}
-section[data-testid="stSidebar"] {background:#020617;}
+.stApp {background:#0f172a;color:white;}
 .card {background:#1e293b;padding:20px;border-radius:12px;text-align:center;}
 .section {background:#1e293b;padding:20px;border-radius:12px;margin-top:20px;}
 .stButton>button {
-    background:linear-gradient(90deg,#00c6ff,#0072ff);
+    background: linear-gradient(90deg,#00c6ff,#0072ff);
     color:white;border-radius:10px;height:45px;width:100%;
 }
-h1,h2,h3 {color:#38bdf8;}
 </style>
 """, unsafe_allow_html=True)
 
 # ================= SIDEBAR =================
-st.sidebar.markdown("## 🧭 Control Panel")
-menu = st.sidebar.radio("", ["📊 Dashboard","📝 Report","📋 Reports","🎥 Detection"])
+st.sidebar.title("🧭 Control Panel")
+menu = st.sidebar.radio("", ["Dashboard","Report","Reports","Detection"])
+
+mode = st.sidebar.selectbox("Mode", ["Demo Mode","AI Mode"])
 
 if st.sidebar.button("Logout"):
     st.session_state.login = False
@@ -66,7 +86,6 @@ def send_email(to_email, name, phone, location, img):
         msg["Subject"] = "🚨 Match Found"
         msg["From"] = sender
         msg["To"] = to_email
-
         msg.set_content(f"{name}\n{phone}\n{location}")
 
         _, buffer = cv2.imencode('.jpg', img)
@@ -76,48 +95,41 @@ def send_email(to_email, name, phone, location, img):
             smtp.login(sender,password)
             smtp.send_message(msg)
     except:
-        pass
+        st.warning("Email failed")
 
 # ================= DASHBOARD =================
-if menu == "📊 Dashboard":
+if menu == "Dashboard":
 
-    st.markdown("<h1 style='text-align:center;'>📊 Dashboard Overview</h1>", unsafe_allow_html=True)
-
-    col1,col2,col3 = st.columns(3)
-    col1.markdown(f"<div class='card'><h3>{len(df)}</h3>Total Records</div>", unsafe_allow_html=True)
-    col2.markdown("<div class='card'><h3>Active</h3>Detection</div>", unsafe_allow_html=True)
-    col3.markdown("<div class='card'><h3>Enabled</h3>Alerts</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='section'><h3>Match Result</h3></div>", unsafe_allow_html=True)
+    st.title("📊 Dashboard Overview")
 
     c1,c2,c3 = st.columns(3)
+    c1.metric("Total Records", len(df))
+    c2.metric("Mode", mode)
+    c3.metric("System", "Active")
+
+    st.subheader("Match Result")
+
+    col1,col2,col3 = st.columns(3)
 
     if "live_img" in st.session_state:
-        c1.image(st.session_state["live_img"], width=250)
+        col1.image(st.session_state["live_img"], width=250)
 
     if st.session_state.get("match"):
-        c2.success("MATCH FOUND")
+        col2.success("MATCH FOUND")
     else:
-        c2.error("NO MATCH")
+        col2.error("NO MATCH")
 
     if "db_img" in st.session_state:
-        c3.image(st.session_state["db_img"], width=250)
-
-    # GRAPH
-    if "acc" not in st.session_state:
-        st.session_state.acc = []
-
-    st.session_state.acc.append(np.random.randint(85,95))
-    st.line_chart(st.session_state.acc)
+        col3.image(st.session_state["db_img"], width=250)
 
 # ================= REPORT =================
-elif menu == "📝 Report":
+elif menu == "Report":
 
-    st.markdown("<h1 style='text-align:center;'>📝 Report Missing Person</h1>", unsafe_allow_html=True)
+    st.title("📝 Report Missing Person")
 
     name = st.text_input("Name")
     phone = st.text_input("Phone")
-    location = st.text_input("Last Location")
+    location = st.text_input("Location")
     email = st.text_input("Email")
     img = st.file_uploader("Upload Image")
 
@@ -141,12 +153,11 @@ elif menu == "📝 Report":
             df.to_csv("data.csv",index=False)
 
             st.success("Saved")
-            st.image(path, width=150)
 
 # ================= REPORTS =================
-elif menu == "📋 Reports":
+elif menu == "Reports":
 
-    st.markdown("<h1 style='text-align:center;'>📋 Reports</h1>", unsafe_allow_html=True)
+    st.title("📋 Reports")
 
     if not df.empty:
         st.dataframe(df)
@@ -157,13 +168,11 @@ elif menu == "📋 Reports":
         st.rerun()
 
 # ================= DETECTION =================
-elif menu == "🎥 Detection":
+elif menu == "Detection":
 
-    st.markdown("<h1 style='text-align:center;'>🎥 Live Detection</h1>", unsafe_allow_html=True)
+    st.title("🎥 Live Detection")
 
-    st.warning("Demo Mode: Face detected & matched for presentation")
-
-    cam = st.camera_input("Capture Image")
+    cam = st.camera_input("Capture")
 
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
@@ -179,23 +188,46 @@ elif menu == "🎥 Detection":
 
         for (x,y,w,h) in faces:
 
-            row = df.iloc[0]  # demo match
+            for _,row in df.iterrows():
 
-            cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
-            cv2.putText(img,row["Name"],(x,y-10),
-                        cv2.FONT_HERSHEY_SIMPLEX,0.9,(0,255,0),2)
+                # DEMO MODE
+                if mode == "Demo Mode":
+                    match = True
 
-            st.session_state["live_img"] = img
-            st.session_state["db_img"] = cv2.imread(row["Image"])
-            st.session_state["match"] = True
+                # AI MODE
+                else:
+                    if not DEEPFACE_AVAILABLE:
+                        st.error("DeepFace not installed")
+                        break
 
-            send_email(row["Email"], row["Name"], row["Phone"], row["Location"], img)
+                    temp = "temp.jpg"
+                    cv2.imwrite(temp, img)
 
-            found = True
-            break
+                    try:
+                        result = DeepFace.verify(temp, row["Image"], enforce_detection=False)
+                        match = result["verified"]
+                    except:
+                        match = False
+
+                if match:
+                    cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+                    cv2.putText(img,row["Name"],(x,y-10),
+                                cv2.FONT_HERSHEY_SIMPLEX,0.9,(0,255,0),2)
+
+                    st.session_state["live_img"] = img
+                    st.session_state["db_img"] = cv2.imread(row["Image"])
+                    st.session_state["match"] = True
+
+                    send_email(row["Email"], row["Name"], row["Phone"], row["Location"], img)
+
+                    found = True
+                    break
+
+            if found:
+                break
 
         if not found:
             st.session_state["match"] = False
-            st.warning("No Face Detected")
+            st.warning("No Match")
 
         st.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
