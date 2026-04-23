@@ -72,7 +72,7 @@ if not st.session_state.get("authentication_status"):
 
     st.markdown("""
     <h1 style='text-align:center;color:white;margin-top:40px;'>
-    MISSING PERSON AND CRIMINAL IDENTIFICATION SYSTEM
+    MISSING PERSON TRACKING SYSTEM
     </h1>
     """, unsafe_allow_html=True)
 
