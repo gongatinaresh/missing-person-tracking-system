@@ -190,9 +190,25 @@ if st.session_state.get("authentication_status"):
 # ---------------- REPORTS ----------------
     elif menu == "Reports":
 
-        if os.path.exists("missing_data.csv"):
-            df = pd.read_csv("missing_data.csv")
-            st.dataframe(df)
+    if os.path.exists("missing_data.csv"):
+        df = pd.read_csv("missing_data.csv")
+        st.dataframe(df)
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("Clear All Reports"):
+                os.remove("missing_data.csv")
+                if os.path.exists("temp"):
+                    for f in os.listdir("temp"):
+                        os.remove(os.path.join("temp", f))
+                st.success("All reports cleared successfully")
+                st.rerun()
+
+        with col2:
+            st.info("This will permanently delete all records")
+    else:
+        st.warning("No reports available")
 
 # ---------------- DETECTION ----------------
     elif menu == "Detection":
