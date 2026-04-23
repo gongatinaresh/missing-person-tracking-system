@@ -38,8 +38,36 @@ h1,h2,h3 {color:white;text-align:center;}
 }
 .login-box {
     width: 100%;
-    max-width: 350px;
+    max-width: 360px;
     margin: auto;
+    padding: 25px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+
+.subtitle {
+    color: #cbd5f5;
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.title {
+    text-align: center;
+    color: white;
+    font-size: 26px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stTextInput input {
+    background: #1e293b;
+    color: white;
+    border-radius: 10px;
+    border: 1px solid #334155;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -67,27 +95,33 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 # ✅ PASTE HERE 👇
 auth_status = st.session_state.get("authentication_status")
 
-if auth_status is None:
-    # SHOW LOGIN UI
-    col1, col2, col3 = st.columns([1,1.2,1])
+# ---------- LOGIN ----------
+name, auth_status, username = None, None, None
 
-    with col2:
-        st.markdown("<div class='login-box'>", unsafe_allow_html=True)
+col1, col2, col3 = st.columns([1,1.2,1])
 
-        st.markdown("<div class='subtitle'>Admin Login</div>", unsafe_allow_html=True)
+with col2:
+    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
-        name, auth_status, username = authenticator.login("Login","main")
+    st.markdown("<div class='title'>🧭 Missing Person System</div>", unsafe_allow_html=True)
+    st.markdown("<div class='subtitle'>Secure Admin Login</div>", unsafe_allow_html=True)
 
-        st.markdown("</div>", unsafe_allow_html=True)
+    name, auth_status, username = authenticator.login("Login","main")
 
+    if auth_status is False:
+        st.error("❌ Invalid Username or Password")
+
+    elif auth_status is None:
+        st.info("Enter your credentials")
+
+    elif auth_status:
+        st.success(f"Welcome {name}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# 🚫 STOP APP UNTIL LOGIN SUCCESS
+if not auth_status:
     st.stop()
-
-elif auth_status is False:
-    st.error("❌ Invalid Username or Password")
-    st.stop()
-
-elif auth_status is True:
-    pass  # continue to dashboard
 # ---------- EMAIL ----------
 def send_email(to_email, name, location, phone, image_path):
     try:
