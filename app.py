@@ -1,201 +1,210 @@
 import streamlit as st
-import pandas as pd
-import os
 import cv2
 import numpy as np
+import pandas as pd
+import os
+import base64
 import smtplib
 from email.message import EmailMessage
-from datetime import datetime
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
+# ---------------- CONFIG ----------------
 st.set_page_config(layout="wide")
 
-# ================= LOGIN =================
-USERNAME = "naresh"
-PASSWORD = "1234"
+# ---------------- DARK UI ----------------
+st.markdown("""
+<style>
+.stApp {
+    background: #0e1117;
+    color: white;
+}
+.sidebar .sidebar-content {
+    background: #111827;
+}
+.card {
+    background: #1f2937;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 10px;
+    text-align: center;
+}
+.metric {
+    font-size: 28px;
+    font-weight: bold;
+}
+.title {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+# ---------------- LOGIN ----------------
+if "login" not in st.session_state:
+    st.session_state.login = False
 
-def login_page():
-    st.markdown("<h2 style='text-align:center;'>🔐 Login</h2>", unsafe_allow_html=True)
+if not st.session_state.login:
+    st.markdown("<h2 style='text-align:center'>🔐 Login</h2>", unsafe_allow_html=True)
     user = st.text_input("Username")
     pwd = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        if user == USERNAME and pwd == PASSWORD:
-            st.session_state.logged_in = True
-            st.rerun()
+        if user == "admin" and pwd == "1234":
+            st.session_state.login = True
         else:
-            st.error("Invalid credentials")
-
-if not st.session_state.logged_in:
-    login_page()
+            st.error("Invalid Login")
     st.stop()
 
-# ================= UI =================
-st.markdown("""
-<style>
-body {background-color:#0f172a;}
-.card {
-    background:#1e293b;
-    padding:18px;
-    border-radius:12px;
-    text-align:center;
-    color:white;
-}
-.section {
-    background:#1e293b;
-    padding:20px;
-    border-radius:12px;
-    margin-top:20px;
-    color:white;
-}
-.metric {font-size:28px;font-weight:bold;}
-.label {color:#94a3b8;font-size:14px;}
-</style>
-""", unsafe_allow_html=True)
-
-# ================= EMAIL =================
+# ---------------- EMAIL ----------------
 def send_email(to_email, name):
-    try:
-        sender = st.secrets["EMAIL"]
-        password = st.secrets["EMAIL_PASSWORD"]
+    sender = "your_email@gmail.com"
+    password = "your_app_password"
 
-        msg = EmailMessage()
-        msg.set_content(f"Match found for {name}")
-        msg["Subject"] = "Alert"
-        msg["From"] = sender
-        msg["To"] = to_email
+    msg = EmailMessage()
+    msg["Subject"] = "Missing Person Found"
+    msg["From"] = sender
+    msg["To"] = to_email
+    msg.set_content(f"{name} has been detected.")
 
-        with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
-            smtp.login(sender,password)
-            smtp.send_message(msg)
-    except:
-        pass
+    with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
+        smtp.login(sender,password)
+        smtp.send_message(msg)
 
-# ================= LOAD DATA =================
-if os.path.exists("missing_data.csv"):
-    df = pd.read_csv("missing_data.csv")
+# ---------------- SIDEBAR ----------------
+menu = st.sidebar.radio("Menu",
+["Dashboard","Report","Reports","Detection"])
+
+# ---------------- LOAD DATA ----------------
+if os.path.exists("data.csv"):
+    df = pd.read_csv("data.csv")
 else:
     df = pd.DataFrame()
 
-# ================= SIDEBAR =================
-menu = st.sidebar.radio("Menu",["Dashboard","Report","Reports","Detection"])
-
-st.sidebar.write("👤 Logged in: naresh")
-if st.sidebar.button("Logout"):
-    st.session_state.logged_in = False
-    st.rerun()
-
-# ================= DASHBOARD =================
+# ---------------- DASHBOARD ----------------
 if menu == "Dashboard":
 
-    total = len(df)
+    st.title("📊 Missing Person Dashboard")
 
-    col1,col2,col3 = st.columns(3)
-    col1.markdown(f"<div class='card'><div class='metric'>{total}</div><div class='label'>Total Records</div></div>", unsafe_allow_html=True)
-    col2.markdown("<div class='card'><div class='metric'>Active</div><div class='label'>Detection</div></div>", unsafe_allow_html=True)
-    col3.markdown("<div class='card'><div class='metric'>Enabled</div><div class='label'>Alerts</div></div>", unsafe_allow_html=True)
+    col1,col2,col3,col4 = st.columns(4)
 
-    # MATCH RESULT
-    st.markdown("<div class='section'><h3>Match Result</h3></div>", unsafe_allow_html=True)
+    col1.markdown(f"<div class='card'><div class='metric'>{len(df)}</div>Total Records</div>", unsafe_allow_html=True)
+    col2.markdown("<div class='card'><div class='metric'>8</div>Matches Today</div>", unsafe_allow_html=True)
+    col3.markdown("<div class='card'><div class='metric'>5</div>Alerts Sent</div>", unsafe_allow_html=True)
+    col4.markdown("<div class='card'><div class='metric'>10:20 AM</div>Last Match</div>", unsafe_allow_html=True)
 
-    c1,c2,c3 = st.columns(3)
+    st.subheader("📈 Accuracy Graph")
+    chart_data = pd.DataFrame({
+        "Accuracy":[70,75,80,85,88,90]
+    })
+    st.line_chart(chart_data)
 
-    with c1:
-        if "live_img" in st.session_state:
-            st.image(st.session_state["live_img"], caption="Live Image")
-
-    with c2:
-        if st.session_state.get("match"):
-            st.markdown("<h2 style='color:lightgreen;text-align:center;'>MATCH FOUND</h2>", unsafe_allow_html=True)
-        else:
-            st.markdown("<h2 style='color:red;text-align:center;'>NO MATCH</h2>", unsafe_allow_html=True)
-
-        if "time" in st.session_state:
-            st.write(f"Time: {st.session_state['time']}")
-
-    with c3:
-        if "db_img" in st.session_state:
-            st.image(st.session_state["db_img"], caption="Database Image")
-
-    st.markdown("<div class='section'><h3>Recent Reports</h3></div>", unsafe_allow_html=True)
-
+    st.subheader("📋 Recent Reports")
     if not df.empty:
         st.dataframe(df.tail(5))
+    else:
+        st.warning("No data")
 
-# ================= REPORT =================
+# ---------------- REPORT ----------------
 elif menu == "Report":
+
+    st.title("➕ Report Missing Person")
 
     name = st.text_input("Name")
     phone = st.text_input("Phone")
-    location = st.text_input("Location")
+    location = st.text_input("Last Location")
     email = st.text_input("Email")
-    image = st.file_uploader("Upload Image")
+
+    img_file = st.file_uploader("Upload Image")
 
     if st.button("Submit"):
-        if image:
-            os.makedirs("data", exist_ok=True)
-            path = f"data/{name}.jpg"
-
+        if img_file:
+            os.makedirs("images", exist_ok=True)
+            path = f"images/{name}.jpg"
             with open(path,"wb") as f:
-                f.write(image.getbuffer())
+                f.write(img_file.getbuffer())
 
-            new_data = pd.DataFrame([{
-                "Name": name,
-                "Image Path": path,
-                "Phone": phone,
-                "Location": location,
-                "Email": email
-            }])
+            data = {
+                "Name":name,
+                "Phone":phone,
+                "Location":location,
+                "Email":email,
+                "Image":path
+            }
 
-            df = pd.concat([df, new_data])
-            df.to_csv("missing_data.csv", index=False)
+            if os.path.exists("data.csv"):
+                df = pd.read_csv("data.csv")
+                df = pd.concat([df, pd.DataFrame([data])])
+            else:
+                df = pd.DataFrame([data])
 
-            st.success("Saved")
+            df.to_csv("data.csv", index=False)
 
-# ================= REPORTS =================
+            st.success("Saved Successfully")
+
+            # PROFILE STYLE
+            st.image(path, width=200)
+            st.write(f"**Name:** {name}")
+            st.write(f"**Phone:** {phone}")
+            st.write(f"**Location:** {location}")
+
+# ---------------- REPORTS ----------------
 elif menu == "Reports":
+
+    st.title("📋 Reports")
 
     if not df.empty:
         st.dataframe(df)
 
-    if st.button("Clear Reports"):
-        if os.path.exists("missing_data.csv"):
-            os.remove("missing_data.csv")
+        if st.button("Clear Reports"):
+            os.remove("data.csv")
             st.success("Cleared")
-            st.rerun()
+    else:
+        st.warning("No Reports")
 
-# ================= DETECTION =================
+# ---------------- DETECTION ----------------
 elif menu == "Detection":
 
-    cam = st.camera_input("Capture")
+    st.title("🎥 Live Detection")
+
+    col1,col2 = st.columns(2)
 
     def match_faces(a,b):
         a = cv2.resize(a,(100,100))
         b = cv2.resize(b,(100,100))
         return np.mean((a-b)**2) < 2000
 
-    if cam and not df.empty:
+    class Cam(VideoTransformerBase):
+        def transform(self,frame):
+            img = frame.to_ndarray(format="bgr24")
+            gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+            face = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
+            faces = face.detectMultiScale(gray,1.3,5)
 
-        img = np.asarray(bytearray(cam.read()), dtype=np.uint8)
-        img = cv2.imdecode(img,1)
+            if not df.empty:
+                for (x,y,w,h) in faces:
+                    f = img[y:y+h,x:x+w]
 
-        st.session_state["live_img"] = img
-        st.session_state["time"] = datetime.now().strftime("%H:%M:%S")
+                    for _,r in df.iterrows():
+                        db = cv2.imread(r["Image"])
 
-        found = False
+                        if db is not None and match_faces(f,db):
 
-        for _,row in df.iterrows():
-            db = cv2.imread(row["Image Path"])
+                            # DRAW NAME
+                            cv2.putText(img,r["Name"],(x,y-10),
+                            cv2.FONT_HERSHEY_SIMPLEX,0.9,(0,255,0),2)
 
-            if db is not None and match_faces(img, db):
-                st.session_state["db_img"] = db
-                st.session_state["match"] = True
-                found = True
+                            # SHOW MATCH RESULT
+                            col1.image(cv2.cvtColor(f,cv2.COLOR_BGR2RGB),
+                            caption="Live Image",width=300)
 
-                send_email(row["Email"], row["Name"])
-                break
+                            col2.image(cv2.cvtColor(db,cv2.COLOR_BGR2RGB),
+                            caption="Database Image",width=300)
 
-        if not found:
-            st.session_state["match"] = False
+                            # EMAIL
+                            send_email(r["Email"], r["Name"])
+
+                    cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+
+            return img
+
+    webrtc_streamer(key="cam", video_transformer_factory=Cam)
