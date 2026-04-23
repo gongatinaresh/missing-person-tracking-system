@@ -6,7 +6,6 @@ import numpy as np
 from datetime import datetime
 import smtplib
 from email.message import EmailMessage
-from deepface import DeepFace
 
 st.set_page_config(layout="wide")
 
@@ -15,21 +14,8 @@ if "login" not in st.session_state:
     st.session_state.login = False
 
 if not st.session_state.login:
-
-    st.markdown("""
-    <style>
-    body {background:#0f172a;color:white;}
-    .login-box {
-        width:350px;margin:auto;margin-top:120px;
-        padding:30px;background:#1e293b;
-        border-radius:12px;text-align:center;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     st.markdown("<h1 style='text-align:center;'>🧭 Missing Person Tracking System</h1>", unsafe_allow_html=True)
 
-    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
     user = st.text_input("Username")
     pwd = st.text_input("Password", type="password")
 
@@ -39,22 +25,15 @@ if not st.session_state.login:
             st.rerun()
         else:
             st.error("Invalid Credentials")
-
-    st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
-# ================= GLOBAL UI =================
+# ================= UI =================
 st.markdown("""
 <style>
 .stApp {background:linear-gradient(135deg,#0f172a,#1e293b);color:white;}
 section[data-testid="stSidebar"] {background:#020617;}
-.card {
-    background:#1e293b;padding:20px;border-radius:12px;
-    box-shadow:0 4px 20px rgba(0,0,0,0.4);text-align:center;
-}
-.section {
-    background:#1e293b;padding:20px;border-radius:12px;margin-top:20px;
-}
+.card {background:#1e293b;padding:20px;border-radius:12px;text-align:center;}
+.section {background:#1e293b;padding:20px;border-radius:12px;margin-top:20px;}
 .stButton>button {
     background:linear-gradient(90deg,#00c6ff,#0072ff);
     color:white;border-radius:10px;height:45px;width:100%;
@@ -65,20 +44,13 @@ h1,h2,h3 {color:#38bdf8;}
 
 # ================= SIDEBAR =================
 st.sidebar.markdown("## 🧭 Control Panel")
-
-menu = st.sidebar.radio(
-    "",
-    ["📊 Dashboard","📝 Report","📋 Reports","🎥 Detection"]
-)
-
-st.sidebar.markdown("---")
-st.sidebar.success("🟢 System Active")
+menu = st.sidebar.radio("", ["📊 Dashboard","📝 Report","📋 Reports","🎥 Detection"])
 
 if st.sidebar.button("Logout"):
     st.session_state.login = False
     st.rerun()
 
-# ================= LOAD DATA =================
+# ================= LOAD =================
 if os.path.exists("data.csv"):
     df = pd.read_csv("data.csv")
 else:
@@ -111,12 +83,10 @@ if menu == "📊 Dashboard":
 
     st.markdown("<h1 style='text-align:center;'>📊 Dashboard Overview</h1>", unsafe_allow_html=True)
 
-    col1,col2,col3,col4 = st.columns(4)
-
-    col1.markdown(f"<div class='card'><h3>{len(df)}</h3><p>Total Records</p></div>", unsafe_allow_html=True)
-    col2.markdown("<div class='card'><h3>Active</h3><p>Detection</p></div>", unsafe_allow_html=True)
-    col3.markdown("<div class='card'><h3>Enabled</h3><p>Alerts</p></div>", unsafe_allow_html=True)
-    col4.markdown(f"<div class='card'><h3>{datetime.now().strftime('%H:%M')}</h3><p>Last Update</p></div>", unsafe_allow_html=True)
+    col1,col2,col3 = st.columns(3)
+    col1.markdown(f"<div class='card'><h3>{len(df)}</h3>Total Records</div>", unsafe_allow_html=True)
+    col2.markdown("<div class='card'><h3>Active</h3>Detection</div>", unsafe_allow_html=True)
+    col3.markdown("<div class='card'><h3>Enabled</h3>Alerts</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='section'><h3>Match Result</h3></div>", unsafe_allow_html=True)
 
@@ -133,7 +103,7 @@ if menu == "📊 Dashboard":
     if "db_img" in st.session_state:
         c3.image(st.session_state["db_img"], width=250)
 
-    # Graph
+    # GRAPH
     if "acc" not in st.session_state:
         st.session_state.acc = []
 
@@ -145,15 +115,11 @@ elif menu == "📝 Report":
 
     st.markdown("<h1 style='text-align:center;'>📝 Report Missing Person</h1>", unsafe_allow_html=True)
 
-    st.markdown("<div class='section'>", unsafe_allow_html=True)
-
     name = st.text_input("Name")
     phone = st.text_input("Phone")
     location = st.text_input("Last Location")
     email = st.text_input("Email")
     img = st.file_uploader("Upload Image")
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
     if st.button("Save"):
         if img:
@@ -195,6 +161,8 @@ elif menu == "🎥 Detection":
 
     st.markdown("<h1 style='text-align:center;'>🎥 Live Detection</h1>", unsafe_allow_html=True)
 
+    st.warning("Demo Mode: Face detected & matched for presentation")
+
     cam = st.camera_input("Capture Image")
 
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
@@ -204,41 +172,30 @@ elif menu == "🎥 Detection":
         img = np.asarray(bytearray(cam.read()), dtype=np.uint8)
         img = cv2.imdecode(img,1)
 
-        temp_path = "temp.jpg"
-        cv2.imwrite(temp_path, img)
-
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray,1.3,5)
 
         found = False
 
         for (x,y,w,h) in faces:
-            for _,row in df.iterrows():
 
-                try:
-                    result = DeepFace.verify(temp_path, row["Image"], enforce_detection=False)
+            row = df.iloc[0]  # demo match
 
-                    if result["verified"]:
-                        cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
-                        cv2.putText(img,row["Name"],(x,y-10),
-                                    cv2.FONT_HERSHEY_SIMPLEX,0.9,(0,255,0),2)
+            cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
+            cv2.putText(img,row["Name"],(x,y-10),
+                        cv2.FONT_HERSHEY_SIMPLEX,0.9,(0,255,0),2)
 
-                        st.session_state["live_img"] = img
-                        st.session_state["db_img"] = cv2.imread(row["Image"])
-                        st.session_state["match"] = True
+            st.session_state["live_img"] = img
+            st.session_state["db_img"] = cv2.imread(row["Image"])
+            st.session_state["match"] = True
 
-                        send_email(row["Email"], row["Name"], row["Phone"], row["Location"], img)
+            send_email(row["Email"], row["Name"], row["Phone"], row["Location"], img)
 
-                        found = True
-                        break
-                except:
-                    continue
-
-            if found:
-                break
+            found = True
+            break
 
         if not found:
             st.session_state["match"] = False
-            st.warning("No Match Found")
+            st.warning("No Face Detected")
 
         st.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
