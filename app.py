@@ -6,7 +6,6 @@ import pandas as pd
 import os
 import cv2
 import numpy as np
-import base64
 import smtplib
 from email.message import EmailMessage
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
@@ -16,26 +15,36 @@ st.set_page_config(layout="wide")
 # ---------- UI ----------
 st.markdown("""
 <style>
-.block-container {padding-top: 1rem;}
-.element-container:empty {display:none;}
 .stApp {
-    background: linear-gradient(135deg, #0f2027,#203a43,#2c5364);
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    font-family: 'Segoe UI', sans-serif;
+}
+.login-box {
+    background: rgba(255,255,255,0.1);
+    padding: 30px;
+    border-radius: 15px;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    width: 350px;
+    margin: auto;
+    margin-top: 120px;
+    text-align: center;
+    color:white;
 }
 .card {
-    padding:18px;
-    border-radius:14px;
-    background:rgba(255,255,255,0.08);
-    backdrop-filter:blur(12px);
-    margin-bottom:10px;
-}
-h1,h2,h3 {color:white;text-align:center;}
-.stButton>button {
-    background:linear-gradient(90deg,#00c6ff,#0072ff);
-    color:white;
+    padding:15px;
     border-radius:10px;
-    height:42px;
+    background:rgba(255,255,255,0.1);
+    margin:10px 0;
+}
+.stButton>button {
+    background: linear-gradient(90deg,#00c6ff,#0072ff);
+    color:white;
+    border-radius:8px;
+    height:40px;
     width:100%;
 }
+#MainMenu, footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,33 +70,49 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 col1,col2,col3 = st.columns([1,2,1])
 with col2:
-    st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
+    st.markdown("<div class='login-box'><h2>🧭 Missing Persons Detection</h2></div>", unsafe_allow_html=True)
     name, auth_status, username = authenticator.login("Login","main")
 
-if auth_status:
-    st.success(f"Welcome {name}")
-elif auth_status is False:
-    st.error("Invalid credentials")
-else:
-    st.warning("Please login")
+col1,col2,col3 = st.columns([1,2,1])
+with col2:
+    if auth_status:
+        st.success(f"Welcome {name}")
+    elif auth_status is False:
+        st.error("Invalid credentials")
+    else:
+        st.warning("Please login")
 
-# ---------- EMAIL ----------
-def send_email(to_email, subject, body):
+# ---------- EMAIL FUNCTION ----------
+def send_email(to_email, name, location, phone, image_path):
     try:
         sender = st.secrets["EMAIL"]
         password = st.secrets["EMAIL_PASSWORD"]
 
         msg = EmailMessage()
-        msg.set_content(body)
-        msg["Subject"] = subject
+        msg["Subject"] = "🚨 Missing Person Detected"
         msg["From"] = sender
         msg["To"] = to_email
+
+        body = f"""
+ALERT: Missing Person Detected
+
+Name: {name}
+Last Seen Location: {location}
+Contact Number: {phone}
+
+Please verify immediately.
+"""
+        msg.set_content(body)
+
+        if os.path.exists(image_path):
+            with open(image_path, "rb") as f:
+                msg.add_attachment(f.read(), maintype="image", subtype="jpeg", filename="detected.jpg")
 
         with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
             smtp.login(sender,password)
             smtp.send_message(msg)
-    except:
-        pass
+    except Exception as e:
+        print("Email Error:", e)
 
 # ---------- MAIN ----------
 if st.session_state.get("authentication_status"):
@@ -96,60 +121,13 @@ if st.session_state.get("authentication_status"):
 
     menu = st.sidebar.radio("Navigation",["Dashboard","Report","Reports","Detection"])
 
-    # ---------------- DASHBOARD ----------------
+# ---------- DASHBOARD ----------
     if menu == "Dashboard":
 
-        if os.path.exists("missing_data.csv"):
-            df = pd.read_csv("missing_data.csv")
-        else:
-            df = pd.DataFrame()
+        df = pd.read_csv("missing_data.csv") if os.path.exists("missing_data.csv") else pd.DataFrame()
+        st.metric("Total Cases", len(df))
 
-        total = len(df)
-
-        st.markdown("""
-        <div class='card'>
-        <h3>📍 Real-time Missing Person Monitoring Dashboard</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
-        c1,c2,c3 = st.columns(3)
-        c1.markdown(f"<div class='card'><h2>{total}</h2><p>Total Records</p></div>", unsafe_allow_html=True)
-        c2.markdown("<div class='card'><h2>Active</h2><p>Detection</p></div>", unsafe_allow_html=True)
-        c3.markdown("<div class='card'><h2>Enabled</h2><p>Alerts</p></div>", unsafe_allow_html=True)
-
-        st.markdown("<div class='card'><h3>Match Result</h3></div>", unsafe_allow_html=True)
-
-        col1,col2,col3 = st.columns([1,2,1])
-
-        cam_path = "temp/live.jpg"
-        db_path = "temp/match.jpg"
-
-        with col1:
-            if os.path.exists(cam_path):
-                st.image(cam_path)
-            else:
-                st.info("Live Image")
-
-        with col2:
-            status = st.session_state.get("status","No Detection")
-            st.markdown(f"""
-            <div style="background:#2ecc71;padding:10px;border-radius:8px;text-align:center;color:white;">
-            {status}
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col3:
-            if os.path.exists(db_path):
-                st.image(db_path)
-            else:
-                st.info("Matched Image")
-
-        st.markdown("<div class='card'><h3>Detection Accuracy Trend</h3></div>", unsafe_allow_html=True)
-
-        chart = pd.DataFrame({"Accuracy":[60,70,75,80,85,90]})
-        st.line_chart(chart)
-
-    # ---------------- REPORT ----------------
+# ---------- REPORT ----------
     elif menu == "Report":
 
         name = st.text_input("Name")
@@ -163,72 +141,55 @@ if st.session_state.get("authentication_status"):
             st.image(image)
 
         if st.button("Submit") and image:
-            os.makedirs("data", exist_ok=True)
+            os.makedirs("data",exist_ok=True)
             path = f"data/{name}.jpg"
 
-            with open(path, "wb") as f:
+            with open(path,"wb") as f:
                 f.write(image.getbuffer())
 
             data = {
-                "Name": name,
-                "Image Path": path,
-                "Phone": phone,
-                "Location": location,
-                "Admin Email": admin_email,
-                "Family Email": family_email
+                "Name":name,
+                "Image Path":path,
+                "Phone":phone,
+                "Location":location,
+                "Admin Email":admin_email,
+                "Family Email":family_email
             }
 
-            if os.path.exists("missing_data.csv"):
-                df = pd.read_csv("missing_data.csv")
-                df = pd.concat([df, pd.DataFrame([data])])
-            else:
-                df = pd.DataFrame([data])
+            df = pd.read_csv("missing_data.csv") if os.path.exists("missing_data.csv") else pd.DataFrame()
+            df = pd.concat([df,pd.DataFrame([data])])
+            df.to_csv("missing_data.csv",index=False)
 
-            df.to_csv("missing_data.csv", index=False)
             st.success("Saved")
 
-    # ---------------- REPORTS ----------------
+# ---------- REPORTS ----------
     elif menu == "Reports":
 
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
             st.dataframe(df)
 
-            col1, col2 = st.columns(2)
-
-            with col1:
-                if st.button("Clear All Reports"):
-                    os.remove("missing_data.csv")
-                    if os.path.exists("temp"):
-                        for f in os.listdir("temp"):
-                            os.remove(os.path.join("temp", f))
-                    st.success("All reports cleared successfully")
-                    st.rerun()
-
-            with col2:
-                st.info("This will permanently delete all records")
+            if st.button("🗑 Clear All Reports"):
+                os.remove("missing_data.csv")
+                st.success("All data cleared")
+                st.rerun()
         else:
             st.warning("No reports available")
 
-    # ---------------- DETECTION ----------------
+# ---------- DETECTION ----------
     elif menu == "Detection":
-
-        st.subheader("Live Detection")
 
         if not os.path.exists("missing_data.csv"):
             st.warning("No data available")
         else:
             df = pd.read_csv("missing_data.csv")
 
-            known = []
-            names = []
-            emails = []
+            known, names, emails = [],[],[]
 
-            for _, r in df.iterrows():
+            for _,r in df.iterrows():
                 img = cv2.imread(r["Image Path"])
                 if img is not None:
-                    img = cv2.resize(img,(100,100))
-                    known.append(img)
+                    known.append(cv2.resize(img,(100,100)))
                     names.append(r["Name"])
                     emails.append(r["Admin Email"])
 
@@ -241,7 +202,7 @@ if st.session_state.get("authentication_status"):
             class Cam(VideoTransformerBase):
                 def transform(self,frame):
                     img = frame.to_ndarray(format="bgr24")
-                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
                     face = cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
                     faces = face.detectMultiScale(gray,1.3,5)
@@ -250,15 +211,16 @@ if st.session_state.get("authentication_status"):
                         f = cv2.resize(img[y:y+h,x:x+w],(100,100))
                         cv2.imwrite("temp/live.jpg", img)
 
-                        for i, db in enumerate(known):
-                            if match(f, db):
+                        for i,db in enumerate(known):
+                            if match(f,db):
 
-                                cv2.imwrite("temp/match.jpg", db)
-                                st.session_state["status"] = "MATCH FOUND"
-
-                                if emails[i] not in sent:
-                                    send_email(emails[i],"Alert",names[i])
-                                    sent.add(emails[i])
+                                send_email(
+                                    emails[i],
+                                    names[i],
+                                    df.iloc[i]["Location"],
+                                    df.iloc[i]["Phone"],
+                                    "temp/live.jpg"
+                                )
 
                                 break
 
@@ -266,4 +228,4 @@ if st.session_state.get("authentication_status"):
 
                     return img
 
-            webrtc_streamer(key="cam", video_transformer_factory=Cam)
+            webrtc_streamer(key="cam",video_transformer_factory=Cam)
