@@ -6,7 +6,6 @@ import numpy as np
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime
-import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
 
@@ -131,7 +130,7 @@ if menu == "Dashboard":
         if "db_img" in st.session_state:
             st.image(st.session_state["db_img"], width=250)
 
-    # GRAPH
+    # GRAPH (FIXED)
     st.markdown("<div class='section'><h3>Accuracy Graph</h3></div>", unsafe_allow_html=True)
 
     if "acc" not in st.session_state:
@@ -139,10 +138,7 @@ if menu == "Dashboard":
 
     st.session_state.acc.append(np.random.randint(80,95))
 
-    fig, ax = plt.subplots()
-    ax.plot(st.session_state.acc)
-    ax.set_ylabel("Accuracy")
-    st.pyplot(fig)
+    st.line_chart(st.session_state.acc)
 
 # ================= REPORT =================
 elif menu == "Report":
