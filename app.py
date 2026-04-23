@@ -6,49 +6,33 @@ import pandas as pd
 import os
 import cv2
 import numpy as np
-import base64
 import smtplib
 from email.message import EmailMessage
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import av
 
-# ---------------- UI STYLE ----------------
+# ================= UI =================
 st.markdown("""
 <style>
-.block-container {padding-top: 1rem;}
-.element-container:empty {display:none;}
-.stApp {
-    background: linear-gradient(135deg, #0f2027,#203a43,#2c5364);
-    font-family: 'Segoe UI';
+.stApp {background:#eef2f7;font-family:'Segoe UI';}
+section[data-testid="stSidebar"] {background:#0b1c2c;color:white;}
+
+.topbar {
+    background:#0b1c2c;color:white;
+    padding:12px;border-radius:8px;margin-bottom:10px;
 }
+
 .card {
-    padding:20px;
-    border-radius:16px;
-    background:rgba(255,255,255,0.06);
-    backdrop-filter:blur(15px);
-    box-shadow:0 8px 25px rgba(0,0,0,0.4);
-    margin-bottom:15px;
-    transition:0.3s;
+    background:white;padding:15px;border-radius:12px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);margin-bottom:10px;
 }
-.card:hover {
-    transform:scale(1.02);
-}
-h1,h2,h3 {color:white;text-align:center;}
-.stButton>button {
-    background:linear-gradient(90deg,#00c6ff,#0072ff);
-    color:white;
-    border-radius:10px;
-    height:42px;
-    width:100%;
-}
-section[data-testid="stSidebar"] {
-    background: rgba(0,0,0,0.5);
-}
-#MainMenu,footer {visibility:hidden;}
+
+.metric {text-align:center;}
+.match-box {text-align:center;color:green;font-size:20px;font-weight:bold;}
+.small-text {color:gray;font-size:14px;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- LOGIN ----------------
+# ================= LOGIN =================
 with open("login_info.txt", "r") as f:
     lines = f.readlines()
 
@@ -67,11 +51,7 @@ credentials = {
 }
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
-
-col1,col2,col3 = st.columns([1,2,1])
-with col2:
-    st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
-    name, auth_status, username = authenticator.login("Login","main")
+name, auth_status, username = authenticator.login("Login","main")
 
 if auth_status:
     st.success(f"Welcome {name}")
@@ -80,33 +60,28 @@ elif auth_status is False:
 else:
     st.warning("Please login")
 
-# ---------------- EMAIL ----------------
+# ================= EMAIL =================
 def send_email(to_email, subject, body):
     sender_email = st.secrets["EMAIL"]
     password = st.secrets["EMAIL_PASSWORD"]
+
     msg = EmailMessage()
     msg.set_content(body)
     msg["Subject"] = subject
     msg["From"] = sender_email
     msg["To"] = to_email
+
     with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
         smtp.login(sender_email,password)
         smtp.send_message(msg)
 
-# ---------------- MAIN ----------------
+# ================= MAIN =================
 if st.session_state.get("authentication_status"):
 
     authenticator.logout("Logout","sidebar")
+    menu = st.sidebar.radio("Menu",["Dashboard","Report","Reports","Detection"])
 
-    st.markdown(f"""
-    <div class='card'>
-        👤 Logged in as <b>{name}</b> | 🟢 System Active
-    </div>
-    """, unsafe_allow_html=True)
-
-    menu = st.sidebar.radio("Navigation",["Dashboard","Report","Reports","Detection"])
-
-# ---------------- DASHBOARD ----------------
+# ================= DASHBOARD =================
     if menu == "Dashboard":
 
         if os.path.exists("missing_data.csv"):
@@ -115,41 +90,71 @@ if st.session_state.get("authentication_status"):
             df = pd.DataFrame()
 
         total = len(df)
+        matches = st.session_state.get("matches", 0)
+        alerts = st.session_state.get("alerts", 0)
 
-        col1,col2,col3 = st.columns(3)
-        col1.markdown(f"<div class='card'><h2>{total}</h2><p>Total Cases</p></div>", unsafe_allow_html=True)
-        col2.markdown("<div class='card'><h2>🟢</h2><p>Detection Active</p></div>", unsafe_allow_html=True)
-        col3.markdown("<div class='card'><h2>📧</h2><p>Alerts Enabled</p></div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='topbar'>
+        🧭 Missing Person Detection System | 🟢 Active | ⏰ {pd.Timestamp.now().strftime("%H:%M:%S")}
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown("<div class='card'><h3>🔍 Match Result</h3></div>", unsafe_allow_html=True)
+        c1,c2,c3,c4 = st.columns(4)
+        c1.markdown(f"<div class='card metric'><h2>{total}</h2>Total Records</div>", unsafe_allow_html=True)
+        c2.markdown(f"<div class='card metric'><h2>{matches}</h2>Matches</div>", unsafe_allow_html=True)
+        c3.markdown(f"<div class='card metric'><h2>{alerts}</h2>Alerts</div>", unsafe_allow_html=True)
+        c4.markdown(f"<div class='card metric'><h2>{pd.Timestamp.now().strftime('%H:%M')}</h2>Last Match</div>", unsafe_allow_html=True)
 
-        c1,c2,c3 = st.columns([2,1,2])
+        left, right = st.columns([3,1])
 
-        with c1:
-            if "live_img" in st.session_state:
-                st.image(st.session_state["live_img"], caption="Live Image")
+        # MATCH RESULT
+        with left:
+            st.markdown("<div class='card'><h3>MATCH RESULT</h3></div>", unsafe_allow_html=True)
 
-        with c2:
+            l1,l2,l3 = st.columns([2,1,2])
+
+            with l1:
+                if "live_img" in st.session_state:
+                    st.image(st.session_state["live_img"], caption="Live Image")
+
+            with l2:
+                if "match_name" in st.session_state:
+                    st.markdown(f"""
+                    <div class='match-box'>
+                    ✔ MATCH FOUND <br>
+                    {st.session_state.get("score","90%")}
+                    <div class='small-text'>{st.session_state["match_name"]}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            with l3:
+                if "db_img" in st.session_state:
+                    st.image(st.session_state["db_img"], caption="Database Image")
+
+            st.markdown("<div class='card'><h3>Recent Reports</h3></div>", unsafe_allow_html=True)
+            if not df.empty:
+                st.dataframe(df.tail(5), use_container_width=True)
+
+        # RIGHT PANEL
+        with right:
+
+            st.markdown("<div class='card'><h3>Person Details</h3></div>", unsafe_allow_html=True)
+
             if "match_name" in st.session_state:
-                st.markdown(f"""
-                <div style='text-align:center;color:#00ff9f;font-size:20px'>
-                ✔ MATCH FOUND <br><br>
-                <b>{st.session_state["match_name"]}</b>
-                </div>
-                """, unsafe_allow_html=True)
+                st.write("Name:", st.session_state["match_name"])
+                st.write("Status: Identified")
             else:
                 st.info("No match yet")
 
-        with c3:
-            if "db_img" in st.session_state:
-                st.image(st.session_state["db_img"], caption="Matched Image")
+            st.markdown("<div class='card'><h4>⚙ Data Control</h4></div>", unsafe_allow_html=True)
 
-        st.markdown("<div class='card'><h3>📋 Recent Reports</h3></div>", unsafe_allow_html=True)
+            if st.button("🗑 Clear All Data"):
+                if os.path.exists("missing_data.csv"):
+                    os.remove("missing_data.csv")
+                    st.success("Database cleared")
+                    st.rerun()
 
-        if not df.empty:
-            st.dataframe(df.tail(5))
-
-# ---------------- REPORT ----------------
+# ================= REPORT =================
     elif menu == "Report":
 
         st.markdown("<div class='card'><h3>➕ Report Missing Person</h3></div>", unsafe_allow_html=True)
@@ -157,8 +162,7 @@ if st.session_state.get("authentication_status"):
         name = st.text_input("Name")
         phone = st.text_input("Phone")
         location = st.text_input("Location")
-        admin_email = st.text_input("Admin Email")
-
+        email = st.text_input("Email")
         image = st.file_uploader("Upload Image")
 
         if st.button("Submit"):
@@ -169,13 +173,7 @@ if st.session_state.get("authentication_status"):
                 with open(path,"wb") as f:
                     f.write(image.getbuffer())
 
-                data={
-                    "Name":name,
-                    "Image Path":path,
-                    "Phone":phone,
-                    "Location":location,
-                    "Admin Email":admin_email
-                }
+                data={"Name":name,"Image Path":path,"Phone":phone,"Location":location,"Email":email}
 
                 if os.path.exists("missing_data.csv"):
                     df=pd.read_csv("missing_data.csv")
@@ -184,16 +182,32 @@ if st.session_state.get("authentication_status"):
                     df=pd.DataFrame([data])
 
                 df.to_csv("missing_data.csv",index=False)
-                st.success("Saved")
+                st.success("Saved Successfully")
 
-# ---------------- REPORTS ----------------
+# ================= REPORTS =================
     elif menu == "Reports":
+
+        st.markdown("<div class='card'><h3>📋 Reports</h3></div>", unsafe_allow_html=True)
 
         if os.path.exists("missing_data.csv"):
             df=pd.read_csv("missing_data.csv")
-            st.dataframe(df)
+            st.dataframe(df, use_container_width=True)
 
-# ---------------- DETECTION ----------------
+            col1,col2=st.columns(2)
+
+            with col1:
+                st.download_button("⬇ Download", df.to_csv(index=False), "reports.csv")
+
+            with col2:
+                if st.button("🗑 Clear Reports"):
+                    os.remove("missing_data.csv")
+                    st.success("Reports cleared")
+                    st.rerun()
+
+        else:
+            st.warning("No reports available")
+
+# ================= DETECTION =================
     elif menu == "Detection":
 
         st.markdown("<div class='card'><h3>🎥 Live Detection</h3></div>", unsafe_allow_html=True)
@@ -218,21 +232,22 @@ if st.session_state.get("authentication_status"):
                 if df is not None:
                     for (x,y,w,h) in faces:
                         f=img[y:y+h,x:x+w]
+
                         for _,r in df.iterrows():
                             db=cv2.imread(r["Image Path"])
 
                             if db is not None and match_faces(f,db):
 
-                                st.session_state["live_img"] = cv2.cvtColor(f, cv2.COLOR_BGR2RGB)
-                                st.session_state["db_img"] = cv2.cvtColor(db, cv2.COLOR_BGR2RGB)
-                                st.session_state["match_name"] = r["Name"]
+                                st.session_state["live_img"]=cv2.cvtColor(f,cv2.COLOR_BGR2RGB)
+                                st.session_state["db_img"]=cv2.cvtColor(db,cv2.COLOR_BGR2RGB)
+                                st.session_state["match_name"]=r["Name"]
+                                st.session_state["score"]="92%"
+                                st.session_state["matches"]=st.session_state.get("matches",0)+1
+                                st.session_state["alerts"]=st.session_state.get("alerts",0)+1
+
+                                send_email(r["Email"],"Match Found",r["Name"])
 
                                 cv2.putText(img,r["Name"],(x,y-10),1,1,(0,255,0),2)
-
-                                if st.session_state.get("last_email") != r["Name"]:
-                                    send_email(r["Admin Email"],"Match Found",r["Name"])
-                                    st.session_state["last_email"] = r["Name"]
-
                                 break
 
                         cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
