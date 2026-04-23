@@ -63,7 +63,6 @@ if not st.session_state.get("authentication_status"):
 
     st.markdown("""
     <style>
-
     .stApp {
         background: url("https://images.unsplash.com/photo-1531297484001-80022131f5a1") no-repeat center center fixed;
         background-size: cover;
@@ -89,24 +88,10 @@ if not st.session_state.get("authentication_status"):
         background: rgba(0,0,0,0.6);
         backdrop-filter: blur(10px);
         text-align: center;
-        box-shadow: 0px 10px 40px rgba(0,0,0,0.7);
-    }
-
-    .title {
-        font-size: 28px;
-        font-weight: bold;
-        color: white;
-        margin-bottom: 10px;
-    }
-
-    .subtitle {
-        color: #ccc;
-        margin-bottom: 20px;
     }
 
     .stTextInput input {
         border-radius: 30px;
-        padding: 10px;
         background: white;
     }
 
@@ -116,10 +101,7 @@ if not st.session_state.get("authentication_status"):
         height: 45px;
         background: linear-gradient(90deg,#00c6ff,#0072ff);
         color: white;
-        font-weight: bold;
-        border: none;
     }
-
     </style>
     """, unsafe_allow_html=True)
 
@@ -132,8 +114,6 @@ if not st.session_state.get("authentication_status"):
     """, unsafe_allow_html=True)
 
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-
-    st.markdown("<div class='subtitle'>Admin Login</div>", unsafe_allow_html=True)
 
     name, auth_status, username = authenticator.login("Login","main")
 
