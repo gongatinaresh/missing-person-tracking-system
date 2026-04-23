@@ -9,47 +9,33 @@ import numpy as np
 import base64
 import smtplib
 from email.message import EmailMessage
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
-import av
+
+# ---------------- UI STYLE ----------------
+st.set_page_config(layout="wide")
 
 st.markdown("""
 <style>
-.block-container {padding-top: 1rem;}
-.element-container:empty {display:none;}
 .stApp {
     background: linear-gradient(135deg, #0f2027,#203a43,#2c5364);
-    font-family: 'Segoe UI';
 }
 .card {
-    padding:18px;
-    border-radius:14px;
+    padding:15px;
+    border-radius:12px;
     background:rgba(255,255,255,0.08);
-    backdrop-filter:blur(12px);
-    box-shadow:0 6px 20px rgba(0,0,0,0.3);
     margin-bottom:10px;
 }
 h1,h2,h3 {color:white;text-align:center;}
-.stButton>button {
-    background:linear-gradient(90deg,#00c6ff,#0072ff);
-    color:white;
-    border-radius:10px;
-    height:42px;
-    width:100%;
-}
-section[data-testid="stSidebar"] {
-    background: rgba(0,0,0,0.5);
-}
-#MainMenu,footer {visibility:hidden;}
 </style>
 """, unsafe_allow_html=True)
 
+# ---------------- LOGIN ----------------
 with open("login_info.txt", "r") as f:
     lines = f.readlines()
 
-names = eval(lines[0].split("=")[1].strip())
-usernames = eval(lines[1].split("=")[1].strip())
+names = eval(lines[0].split("=")[1])
+usernames = eval(lines[1].split("=")[1])
 
-file_path = Path(__file__).parent / "hashed_pw.pkl"
+file_path = Path("hashed_pw.pkl")
 with file_path.open("rb") as file:
     hashed_passwords = pickle.load(file)
 
@@ -62,175 +48,185 @@ credentials = {
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
-col1,col2,col3 = st.columns([1,2,1])
-with col2:
-    st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
-    name, auth_status, username = authenticator.login("Login","main")
+name, auth_status, username = authenticator.login("Login", "main")
 
 if auth_status:
     st.success(f"Welcome {name}")
 elif auth_status is False:
     st.error("Invalid credentials")
 else:
-    st.warning("Please login")
+    st.stop()
 
+authenticator.logout("Logout", "sidebar")
+
+# ---------------- EMAIL FUNCTION ----------------
 def send_email(to_email, subject, body):
-    sender_email = st.secrets["EMAIL"]
-    password = st.secrets["EMAIL_PASSWORD"]
-    msg = EmailMessage()
-    msg.set_content(body)
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = to_email
-    with smtplib.SMTP_SSL("smtp.gmail.com",465) as smtp:
-        smtp.login(sender_email,password)
-        smtp.send_message(msg)
+    try:
+        sender = st.secrets["EMAIL"]
+        password = st.secrets["EMAIL_PASSWORD"]
 
-if st.session_state.get("authentication_status"):
+        msg = EmailMessage()
+        msg.set_content(body)
+        msg["Subject"] = subject
+        msg["From"] = sender
+        msg["To"] = to_email
 
-    authenticator.logout("Logout","sidebar")
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(sender, password)
+            smtp.send_message(msg)
+    except:
+        pass
 
-    st.markdown(f"""
-    <div class='card'>
-        👤 Logged in as <b>{name}</b> | 🟢 System Active
-    </div>
-    """, unsafe_allow_html=True)
+# ---------------- SIDEBAR ----------------
+menu = st.sidebar.radio("Navigation", ["Dashboard", "Report", "Reports", "Detection"])
 
-    menu = st.sidebar.radio("Navigation",["Dashboard","Report","Reports","Detection"])
+# ================= DASHBOARD =================
+if menu == "Dashboard":
 
-# ---------------- DASHBOARD ----------------
-    if menu == "Dashboard":
+    st.markdown("<div class='card'><h3>Dashboard</h3></div>", unsafe_allow_html=True)
 
-        st.markdown("""
-        <div class='card'>
-            <h3>📍 Real-time Missing Person Identification & Monitoring Dashboard</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
+    if os.path.exists("missing_data.csv"):
+        df = pd.read_csv("missing_data.csv")
+        total = len(df)
+    else:
+        df = pd.DataFrame()
         total = 0
-        if os.path.exists("missing_data.csv"):
-            df = pd.read_csv("missing_data.csv")
-            total = len(df)
-        else:
-            df = pd.DataFrame()
 
-        col1,col2,col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-        col1.markdown(f"<div class='card'><h1>{total}</h1><p>Total Cases</p></div>", unsafe_allow_html=True)
-        col2.markdown("<div class='card'><h1>🟢</h1><p>Detection Active</p></div>", unsafe_allow_html=True)
-        col3.markdown("<div class='card'><h1>📧</h1><p>Alert System</p></div>", unsafe_allow_html=True)
+    col1.metric("Total Cases", total)
+    col2.metric("System Status", "Active")
+    col3.metric("Alerts", "Enabled")
 
-        st.markdown("<div class='card'><h3>Recent Reports</h3></div>", unsafe_allow_html=True)
+    if not df.empty:
+        st.dataframe(df.tail(5))
+    else:
+        st.warning("No data available")
 
-        if not df.empty:
-            st.dataframe(df.tail(5))
-        else:
-            st.warning("No reports available")
+# ================= REPORT =================
+elif menu == "Report":
 
+    st.markdown("<div class='card'><h3>Report Missing Person</h3></div>", unsafe_allow_html=True)
 
-# ---------------- REPORT ----------------
-    elif menu == "Report":
+    name = st.text_input("Name")
+    phone = st.text_input("Phone")
+    location = st.text_input("Location")
+    email = st.text_input("Email")
 
-        st.markdown("<div class='card'><h3>➕ Report Missing Person</h3></div>", unsafe_allow_html=True)
+    image = st.file_uploader("Upload Image")
 
-        col1,col2 = st.columns([2,1])
+    if image:
+        st.image(image)
 
-        with col1:
-            name = st.text_input("Name")
-            phone = st.text_input("Phone")
-            location = st.text_input("Location")
-            admin_email = st.text_input("Admin Email")
-            family_email = st.text_input("Family Email")
+    if st.button("Save"):
+        if image:
+            os.makedirs("data", exist_ok=True)
+            path = f"data/{name}.jpg"
 
-        with col2:
-            image = st.file_uploader("Upload Image")
+            with open(path, "wb") as f:
+                f.write(image.getbuffer())
 
-            if image:
-                img_bytes = np.asarray(bytearray(image.read()), dtype=np.uint8)
-                img = cv2.imdecode(img_bytes,1)
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                img = cv2.resize(img,(150,150))
-                _,buffer = cv2.imencode('.jpg',img)
-                img_str = base64.b64encode(buffer).decode()
+            data = {
+                "Name": name,
+                "Image Path": path,
+                "Phone": phone,
+                "Location": location,
+                "Email": email
+            }
 
-                st.markdown(f"""
-                <div style="display:flex;justify-content:center;">
-                <img src="data:image/jpeg;base64,{img_str}"
-                style="border-radius:50%; width:150px; height:150px;">
-                </div>
-                """, unsafe_allow_html=True)
+            if os.path.exists("missing_data.csv"):
+                df = pd.read_csv("missing_data.csv")
+                df = pd.concat([df, pd.DataFrame([data])])
+            else:
+                df = pd.DataFrame([data])
 
-        if st.button("Submit"):
-            if image:
-                os.makedirs("data",exist_ok=True)
-                path=f"data/{name}.jpg"
+            df.to_csv("missing_data.csv", index=False)
+            st.success("Saved Successfully")
 
-                with open(path,"wb") as f:
-                    f.write(image.getbuffer())
+# ================= REPORTS =================
+elif menu == "Reports":
 
-                data={
-                    "Name":name,
-                    "Image Path":path,
-                    "Phone":phone,
-                    "Location":location,
-                    "Admin Email":admin_email,
-                    "Family Email":family_email
-                }
+    st.markdown("<div class='card'><h3>All Reports</h3></div>", unsafe_allow_html=True)
 
-                if os.path.exists("missing_data.csv"):
-                    df=pd.read_csv("missing_data.csv")
-                    df=pd.concat([df,pd.DataFrame([data])])
-                else:
-                    df=pd.DataFrame([data])
+    if os.path.exists("missing_data.csv"):
+        df = pd.read_csv("missing_data.csv")
+        st.dataframe(df)
 
-                df.to_csv("missing_data.csv",index=False)
-                st.success("Saved")
+# ================= DETECTION =================
+elif menu == "Detection":
 
-# ---------------- REPORTS ----------------
-    elif menu == "Reports":
+    st.markdown("<div class='card'><h3>Live Detection</h3></div>", unsafe_allow_html=True)
 
-        st.markdown("<div class='card'><h3>📋 Reports</h3></div>", unsafe_allow_html=True)
+    def match_faces(a, b):
+        a = cv2.resize(a, (100,100))
+        b = cv2.resize(b, (100,100))
+        score = np.mean((a - b) ** 2)
+        return score, score < 2000
 
-        if os.path.exists("missing_data.csv"):
-            df=pd.read_csv("missing_data.csv")
-            st.dataframe(df)
+    if os.path.exists("missing_data.csv"):
+        df = pd.read_csv("missing_data.csv")
+    else:
+        df = None
 
-            if st.button("Clear Reports"):
-                os.remove("missing_data.csv")
-                st.success("Cleared")
+    FRAME = st.empty()
+    RESULT = st.empty()
 
-# ---------------- DETECTION ----------------
-    elif menu == "Detection":
+    cap = cv2.VideoCapture(0)
 
-        st.markdown("<div class='card'><h3>🎥 Live Detection</h3></div>", unsafe_allow_html=True)
+    if st.button("Start Detection"):
 
-        def match_faces(a,b):
-            a=cv2.resize(a,(100,100))
-            b=cv2.resize(b,(100,100))
-            return np.mean((a-b)**2)<2000
+        sent = False
 
-        if os.path.exists("missing_data.csv"):
-            df=pd.read_csv("missing_data.csv")
-        else:
-            df=None
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        class Cam(VideoTransformerBase):
-            def transform(self,frame):
-                img=frame.to_ndarray(format="bgr24")
-                gray=cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-                face=cv2.CascadeClassifier(cv2.data.haarcascades+"haarcascade_frontalface_default.xml")
-                faces=face.detectMultiScale(gray,1.3,5)
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            face_cascade = cv2.CascadeClassifier(
+                cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+            )
 
-                if df is not None:
-                    for (x,y,w,h) in faces:
-                        f=img[y:y+h,x:x+w]
-                        for _,r in df.iterrows():
-                            db=cv2.imread(r["Image Path"])
-                            if db is not None and match_faces(f,db):
-                                cv2.putText(img,r["Name"],(x,y-10),1,1,(0,255,0),2)
-                                send_email(r["Admin Email"],"Alert",r["Name"])
+            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+
+            match_img = None
+            match_name = None
+
+            if df is not None:
+                for (x,y,w,h) in faces:
+                    face = frame[y:y+h, x:x+w]
+
+                    for _, row in df.iterrows():
+                        db = cv2.imread(row["Image Path"])
+
+                        if db is not None:
+                            score, matched = match_faces(face, db)
+
+                            if matched:
+                                match_img = db
+                                match_name = row["Name"]
+
+                                cv2.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)
+                                cv2.putText(frame, match_name,(x,y-10),1,1,(0,255,0),2)
+
+                                if not sent:
+                                    send_email(row["Email"], "Match Found", f"{match_name} detected")
+                                    sent = True
                                 break
-                        cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)
-                return img
 
-        webrtc_streamer(key="cam",video_transformer_factory=Cam)
+            FRAME.image(frame, channels="BGR")
+
+            with RESULT.container():
+                c1, c2 = st.columns(2)
+
+                with c1:
+                    st.image(frame, channels="BGR", caption="Live Image")
+
+                with c2:
+                    if match_img is not None:
+                        st.image(match_img, channels="BGR", caption="Matched Image")
+                        st.success(f"Match Found: {match_name}")
+                    else:
+                        st.warning("No Match")
+
+    cap.release()
