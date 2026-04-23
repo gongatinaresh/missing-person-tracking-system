@@ -36,6 +36,11 @@ h1,h2,h3 {color:white;text-align:center;}
     height:42px;
     width:100%;
 }
+.login-box {
+    width: 100%;
+    max-width: 350px;
+    margin: auto;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -76,6 +81,9 @@ if not st.session_state.get("authentication_status"):
     </h1>
     """, unsafe_allow_html=True)
 
+    col1, col2, col3 = st.columns([1,1.2,1])
+
+with col2:
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
     st.markdown("<div class='subtitle'>Admin Login</div>", unsafe_allow_html=True)
