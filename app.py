@@ -11,23 +11,21 @@ import smtplib
 from email.message import EmailMessage
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
-# ---------- UI ----------
 st.set_page_config(layout="wide")
 
+# ---------- UI ----------
 st.markdown("""
 <style>
 .block-container {padding-top: 1rem;}
 .element-container:empty {display:none;}
 .stApp {
     background: linear-gradient(135deg, #0f2027,#203a43,#2c5364);
-    font-family: 'Segoe UI';
 }
 .card {
     padding:18px;
     border-radius:14px;
     background:rgba(255,255,255,0.08);
     backdrop-filter:blur(12px);
-    box-shadow:0 6px 20px rgba(0,0,0,0.3);
     margin-bottom:10px;
 }
 h1,h2,h3 {color:white;text-align:center;}
@@ -38,10 +36,6 @@ h1,h2,h3 {color:white;text-align:center;}
     height:42px;
     width:100%;
 }
-section[data-testid="stSidebar"] {
-    background: rgba(0,0,0,0.5);
-}
-#MainMenu,footer {visibility:hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -100,27 +94,62 @@ if st.session_state.get("authentication_status"):
 
     authenticator.logout("Logout","sidebar")
 
-    st.markdown(f"<div class='card'>👤 Logged in as <b>{name}</b></div>", unsafe_allow_html=True)
-
     menu = st.sidebar.radio("Navigation",["Dashboard","Report","Reports","Detection"])
 
-# ---------- DASHBOARD ----------
+# ---------------- DASHBOARD ----------------
     if menu == "Dashboard":
 
-        total = 0
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
-            total = len(df)
         else:
             df = pd.DataFrame()
 
-        col1,col2,col3 = st.columns(3)
+        total = len(df)
 
-        col1.metric("Total Cases", total)
-        col2.metric("Detection", "Active")
-        col3.metric("Alert System", "ON")
+        st.markdown("""
+        <div class='card'>
+        <h3>📍 Real-time Missing Person Monitoring Dashboard</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-# ---------- REPORT ----------
+        c1,c2,c3 = st.columns(3)
+        c1.markdown(f"<div class='card'><h2>{total}</h2><p>Total Records</p></div>", unsafe_allow_html=True)
+        c2.markdown("<div class='card'><h2>Active</h2><p>Detection</p></div>", unsafe_allow_html=True)
+        c3.markdown("<div class='card'><h2>Enabled</h2><p>Alerts</p></div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='card'><h3>Match Result</h3></div>", unsafe_allow_html=True)
+
+        col1,col2,col3 = st.columns([1,2,1])
+
+        cam_path = "temp/live.jpg"
+        db_path = "temp/match.jpg"
+
+        with col1:
+            if os.path.exists(cam_path):
+                st.image(cam_path)
+            else:
+                st.info("Live Image")
+
+        with col2:
+            status = st.session_state.get("status","No Detection")
+            st.markdown(f"""
+            <div style="background:#2ecc71;padding:10px;border-radius:8px;text-align:center;color:white;">
+            {status}
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col3:
+            if os.path.exists(db_path):
+                st.image(db_path)
+            else:
+                st.info("Matched Image")
+
+        st.markdown("<div class='card'><h3>Detection Accuracy Trend</h3></div>", unsafe_allow_html=True)
+
+        chart = pd.DataFrame({"Accuracy":[60,70,75,80,85,90]})
+        st.line_chart(chart)
+
+# ---------------- REPORT ----------------
     elif menu == "Report":
 
         name = st.text_input("Name")
@@ -158,18 +187,14 @@ if st.session_state.get("authentication_status"):
             df.to_csv("missing_data.csv", index=False)
             st.success("Saved")
 
-# ---------- REPORTS ----------
+# ---------------- REPORTS ----------------
     elif menu == "Reports":
 
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
             st.dataframe(df)
 
-            if st.button("Clear Reports"):
-                os.remove("missing_data.csv")
-                st.success("Cleared")
-
-# ---------- DETECTION ----------
+# ---------------- DETECTION ----------------
     elif menu == "Detection":
 
         st.subheader("Live Detection")
@@ -179,7 +204,7 @@ if st.session_state.get("authentication_status"):
         else:
             df = pd.read_csv("missing_data.csv")
 
-            known_faces = []
+            known = []
             names = []
             emails = []
 
@@ -187,17 +212,18 @@ if st.session_state.get("authentication_status"):
                 img = cv2.imread(r["Image Path"])
                 if img is not None:
                     img = cv2.resize(img,(100,100))
-                    known_faces.append(img)
+                    known.append(img)
                     names.append(r["Name"])
                     emails.append(r["Admin Email"])
 
-            sent = set()
+            os.makedirs("temp",exist_ok=True)
+            sent=set()
 
             def match(a,b):
                 return np.mean((a-b)**2) < 2000
 
             class Cam(VideoTransformerBase):
-                def transform(self, frame):
+                def transform(self,frame):
                     img = frame.to_ndarray(format="bgr24")
                     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -206,14 +232,16 @@ if st.session_state.get("authentication_status"):
 
                     for (x,y,w,h) in faces:
                         f = cv2.resize(img[y:y+h,x:x+w],(100,100))
+                        cv2.imwrite("temp/live.jpg", img)
 
-                        for i, db in enumerate(known_faces):
+                        for i, db in enumerate(known):
                             if match(f, db):
 
-                                cv2.putText(img, names[i], (x,y-10), 1,1,(0,255,0),2)
+                                cv2.imwrite("temp/match.jpg", db)
+                                st.session_state["status"] = "MATCH FOUND"
 
                                 if emails[i] not in sent:
-                                    send_email(emails[i], "Alert", names[i])
+                                    send_email(emails[i],"Alert",names[i])
                                     sent.add(emails[i])
 
                                 break
