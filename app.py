@@ -107,16 +107,27 @@ Please verify immediately.
 """
         msg.set_content(body)
 
-        if os.path.exists(image_path):
+        # ✅ Attach ONLY live image (safe check)
+        if image_path and os.path.exists(image_path):
             with open(image_path, "rb") as f:
-                msg.add_attachment(f.read(), maintype="image", subtype="jpeg", filename=os.path.basename(image_path))
+                file_data = f.read()
+                msg.add_attachment(
+                    file_data,
+                    maintype="image",
+                    subtype="jpeg",
+                    filename="live_detection.jpg"
+                )
 
+        # ✅ Secure connection
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(sender, password)
             smtp.send_message(msg)
 
+        # ✅ Debug success (IMPORTANT)
+        print("Email sent successfully to:", to_email)
+
     except Exception as e:
-        print("Email Error:", e)
+        print("❌ Email Error:", e)
 
 # ---------- MAIN ----------
 if st.session_state.get("authentication_status"):
@@ -125,7 +136,6 @@ if st.session_state.get("authentication_status"):
 
     menu = st.sidebar.radio("Navigation", ["Dashboard", "Report", "Reports", "Detection"])
 
-    # ---------------- DASHBOARD ----------------
         # ---------------- DASHBOARD ----------------
     if menu == "Dashboard":
 
