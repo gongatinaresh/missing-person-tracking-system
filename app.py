@@ -68,7 +68,7 @@ if auth_status is None:
     <style>
 
     .stApp {
-        background: url("https://i.ibb.co/8gZz0qj/background.jpg") no-repeat center center fixed;
+        background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
         background-size: cover;
     }
 
@@ -78,77 +78,63 @@ if auth_status is None:
 
     header {visibility: hidden;}
 
-    .title-box {
-        text-align:center;
-        font-size:36px;
-        font-weight:bold;
-        color:white;
-        padding:15px;
-        border-radius:15px;
-        margin-bottom:30px;
-        background: rgba(0,0,0,0.6);
-        box-shadow:0 0 20px #00c6ff;
+    /* ===== TITLE ===== */
+    .main-title {
+        text-align: center;
+        font-size: 30px;
+        font-weight: bold;
+        color: white;
+        margin-bottom: 20px;
     }
 
+    /* ===== CENTER FIX ===== */
+    .block-container {
+        max-width: 400px;
+        margin: auto;
+    }
+
+    /* ===== LOGIN CARD ===== */
     .login-box {
-        width:420px;
-        margin:auto;
-        padding:30px;
-        border-radius:15px;
+        padding: 20px;
+        border-radius: 12px;
         background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(12px);
-        box-shadow:0 0 25px rgba(0,150,255,0.3);
+        backdrop-filter: blur(10px);
+        text-align: center;
     }
 
-    div[data-baseweb="input"] > div {
-        background-color: rgba(255,255,255,0.95) !important;
-        border-radius:10px;
+    /* ===== INPUT CONTROL ===== */
+    div[data-baseweb="input"] {
+        width: 100% !important;
     }
 
     div[data-baseweb="input"] input {
-        color:black !important;
+        color: black !important;
     }
 
-    label {
-        color:white !important;
-    }
-
+    /* ===== BUTTON ===== */
     .stButton>button {
-        width:100%;
-        height:45px;
-        border-radius:10px;
+        width: 100%;
+        border-radius: 8px;
+        height: 40px;
         background: linear-gradient(90deg,#00c6ff,#0072ff);
-        color:white;
-        font-weight:bold;
-        border:none;
+        color: white;
     }
 
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class='title-box'>
-        🔍 Missing Person Tracking System
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div class='main-title'>🔍 Missing Person Tracking System</div>", unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1,1.5,1])
+    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
-    with col2:
-        st.markdown("<div class='login-box'>", unsafe_allow_html=True)
+    name, auth_status, username = authenticator.login(
+        "Login",
+        "main",
+        key="login_form"
+    )
 
-        st.markdown("### 🔐 Admin Login")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-        name, auth_status, username = authenticator.login("Login","main")
-
-        st.info("Enter your credentials")
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.stop()
-
-elif auth_status is False:
-    st.error("❌ Invalid credentials")
     st.stop()
 
 # ---------- AFTER LOGIN ----------
