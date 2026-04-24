@@ -76,6 +76,7 @@ with col2:
     name, auth_status, username = authenticator.login("Login","main")
 
     st.markdown("</div>", unsafe_allow_html=True)
+
 # ---------- EMAIL ----------
 def send_email(to_email, name, location, phone, image_path):
     try:
@@ -180,67 +181,6 @@ if st.session_state.get("authentication_status"):
         chart = pd.DataFrame({"Accuracy": [60, 70, 75, 80, 85, 90]})
         st.line_chart(chart)
 
-    # ---------------- REPORT ----------------
-    elif menu == "Report":
-
-        name = st.text_input("Name")
-        phone = st.text_input("Phone")
-        location = st.text_input("Location")
-        admin_email = st.text_input("Admin Email")
-        family_email = st.text_input("Family Email")
-        image = st.file_uploader("Upload Image")
-
-        if image:
-            st.image(image)
-
-        if st.button("Submit") and image:
-            os.makedirs("data", exist_ok=True)
-            path = f"data/{name}.jpg"
-
-            with open(path, "wb") as f:
-                f.write(image.getbuffer())
-
-            data = {
-                "Name": name,
-                "Image Path": path,
-                "Phone": phone,
-                "Location": location,
-                "Admin Email": admin_email,
-                "Family Email": family_email
-            }
-
-            if os.path.exists("missing_data.csv"):
-                df = pd.read_csv("missing_data.csv")
-                df = pd.concat([df, pd.DataFrame([data])])
-            else:
-                df = pd.DataFrame([data])
-
-            df.to_csv("missing_data.csv", index=False)
-            st.success("Saved")
-
-    # ---------------- REPORTS ----------------
-    elif menu == "Reports":
-
-        if os.path.exists("missing_data.csv"):
-            df = pd.read_csv("missing_data.csv")
-            st.dataframe(df)
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                if st.button("Clear All Reports"):
-                    os.remove("missing_data.csv")
-                    if os.path.exists("temp"):
-                        for f in os.listdir("temp"):
-                            os.remove(os.path.join("temp", f))
-                    st.success("All reports cleared successfully")
-                    st.rerun()
-
-            with col2:
-                st.info("This will permanently delete all records")
-        else:
-            st.warning("No reports available")
-
     # ---------------- DETECTION ----------------
     elif menu == "Detection":
 
@@ -287,7 +227,17 @@ if st.session_state.get("authentication_status"):
                             if match(f, db):
 
                                 cv2.imwrite("temp/match.jpg", db)
-                                st.session_state["status"] = "MATCH FOUND"
+                                st.session_state["status"] = f"MATCH FOUND: {names[i]}"
+
+                                cv2.putText(
+                                    img,
+                                    names[i],
+                                    (x, y - 10),
+                                    cv2.FONT_HERSHEY_SIMPLEX,
+                                    0.8,
+                                    (0, 255, 0),
+                                    2
+                                )
 
                                 if emails[i] not in sent:
                                     send_email(
@@ -301,8 +251,14 @@ if st.session_state.get("authentication_status"):
 
                                 break
 
-                        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                        color = (0,255,0) if "MATCH FOUND" in st.session_state.get("status","") else (0,0,255)
+                        cv2.rectangle(img,(x,y),(x+w,y+h),color,2)
 
                     return img
 
-            webrtc_streamer(key="cam", video_transformer_factory=Cam)
+            webrtc_streamer(
+                key="cam",
+                video_transformer_factory=Cam,
+                media_stream_constraints={"video": True, "audio": False},
+                async_processing=True
+            )
