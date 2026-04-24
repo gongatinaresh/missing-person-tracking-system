@@ -60,9 +60,13 @@ credentials = {
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 # ---------- PREMIUM LOGIN UI ----------
-auth_status = st.session_state.get("authentication_status")
+# ---------- SESSION INIT ----------
+if "authentication_status" not in st.session_state:
+    st.session_state["authentication_status"] = False
 
-if auth_status is None:
+
+# ---------- LOGIN PAGE ----------
+if not st.session_state["authentication_status"]:
 
     st.markdown("""
     <style>
@@ -73,47 +77,67 @@ if auth_status is None:
     }
 
     [data-testid="stAppViewContainer"] {
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.75);
     }
 
-    /* CENTER ENTIRE PAGE */
-    .block-container {
-        max-width: 400px;
-        margin: auto;
-        padding-top: 100px;
+    header {visibility: hidden;}
+
+    .main-title {
+        text-align: center;
+        font-size: 32px;
+        font-weight: bold;
+        color: white;
+        margin-top: 40px;
     }
 
-    /* LOGIN CARD */
     .login-box {
+        width: 360px;
+        margin: 80px auto;
         padding: 25px;
         border-radius: 15px;
         background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(12px);
         text-align: center;
+        box-shadow: 0px 10px 40px rgba(0,0,0,0.8);
+    }
+
+    .stTextInput input {
+        border-radius: 10px;
+        padding: 10px;
+        background: white;
+    }
+
+    .stButton>button {
+        width: 100%;
+        border-radius: 10px;
+        height: 42px;
+        background: linear-gradient(90deg,#00c6ff,#0072ff);
+        color: white;
+        font-weight: bold;
+        border: none;
     }
 
     </style>
     """, unsafe_allow_html=True)
 
-    # TITLE
-    st.markdown(
-        "<h2 style='text-align:center;color:white;'>🔍 Missing Person Tracking System</h2>",
-        unsafe_allow_html=True
-    )
+    st.markdown("<div class='main-title'>🔍 Missing Person Tracking System</div>", unsafe_allow_html=True)
 
-    # LOGIN BOX
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
-    name, auth_status, username = authenticator.login(
-        "Login", "main", key="login_form"
-    )
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        # 🔑 CHANGE THIS CREDENTIAL
+        if username == "admin" and password == "1234":
+            st.session_state["authentication_status"] = True
+            st.success("Login Successful")
+            st.rerun()
+        else:
+            st.error("Invalid Username or Password")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.stop()
-
-elif auth_status is False:
-    st.error("❌ Invalid Username or Password")
     st.stop()
 
 # ---------- AFTER LOGIN ----------
