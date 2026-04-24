@@ -77,20 +77,21 @@ credentials = {
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 # ✅ PASTE HERE 👇
-auth_status = st.session_state.get("authentication_status")
+name, auth_status, username = authenticator.login("Login","main")
 
-# ---------- LOGIN ----------
+if auth_status is False:
+    st.error("❌ Invalid Username or Password")
+    st.stop()
+
 if auth_status is None:
 
     st.markdown("""
     <style>
-
     .stApp {
-        background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
+        background: url("https://i.ibb.co/8gZz0qj/background.jpg") no-repeat center center fixed;
         background-size: cover;
     }
 
-    /* Dark overlay for readability */
     [data-testid="stAppViewContainer"] {
         background: rgba(0,0,0,0.7);
     }
@@ -103,28 +104,9 @@ if auth_status is None:
         background: rgba(0,0,0,0.6);
         backdrop-filter: blur(10px);
         text-align: center;
-        box-shadow: 0px 10px 40px rgba(0,0,0,0.8);
     }
-
-    .subtitle {
-        color: #ccc;
-        margin-bottom: 20px;
-        font-size: 18px;
-    }
-
     </style>
     """, unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1,1.2,1])
-
-    with col2:
-        st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-
-        st.markdown("<div class='subtitle'>Admin Login</div>", unsafe_allow_html=True)
-
-        name, auth_status, username = authenticator.login("Login","main")
-
-        st.markdown("</div>", unsafe_allow_html=True)
 
     st.stop()
 # ---------- EMAIL ----------
