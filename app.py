@@ -86,7 +86,7 @@ if auth_status is not True:
     <style>
 
     .stApp {
-        background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
+        background: url("https://i.ibb.co/8gZz0qj/background.jpg") no-repeat center center fixed;
         background-size: cover;
     }
 
@@ -147,10 +147,8 @@ if auth_status is not True:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
         st.markdown("<div class='subtitle'>🔐 Admin Login</div>", unsafe_allow_html=True)
 
-        # ✅ ONLY ONE LOGIN CALL
-        name, auth_status, username = authenticator.login(
-            "Login", "main", key="login_form"
-        )
+        # ✅ FIXED LOGIN (NO key, ONLY ONCE)
+        name, auth_status, username = authenticator.login("Login", "main")
 
         if auth_status is False:
             st.error("❌ Invalid Username or Password")
