@@ -16,59 +16,43 @@ st.set_page_config(layout="wide")
 # ---------- UI ----------
 st.markdown("""
 <style>
-.block-container {padding-top: 1rem;}
-.element-container:empty {display:none;}
+
 .stApp {
-    background: linear-gradient(135deg, #0f2027,#203a43,#2c5364);
+    background: url("https://i.ibb.co/8gZz0qj/background.jpg") no-repeat center center fixed;
+    background-size: cover;
 }
-.card {
-    padding:18px;
-    border-radius:14px;
-    background:rgba(255,255,255,0.08);
-    backdrop-filter:blur(12px);
-    margin-bottom:10px;
+
+/* Dark overlay */
+[data-testid="stAppViewContainer"] {
+    background: rgba(0,0,0,0.7);
 }
-h1,h2,h3 {color:white;text-align:center;}
-.stButton>button {
-    background:linear-gradient(90deg,#00c6ff,#0072ff);
-    color:white;
-    border-radius:10px;
-    height:42px;
-    width:100%;
-}
+
+/* Login card */
 .login-box {
-    width: 100%;
-    max-width: 360px;
+    width: 350px;
     margin: auto;
     padding: 25px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.06);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    border-radius: 15px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
+    text-align: center;
 }
 
-.subtitle {
-    color: #cbd5f5;
-    text-align: center;
-    margin-bottom: 15px;
-    font-size: 20px;
-    font-weight: 500;
+/* 🔥 FIX INPUT VISIBILITY */
+div[data-baseweb="input"] > div {
+    background-color: white !important;
 }
 
-.title {
-    text-align: center;
-    color: white;
-    font-size: 26px;
+div[data-baseweb="input"] input {
+    color: black !important;
+}
+
+/* Labels */
+label {
+    color: white !important;
     font-weight: bold;
-    margin-bottom: 5px;
 }
 
-.stTextInput input {
-    background: #1e293b;
-    color: white;
-    border-radius: 10px;
-    border: 1px solid #334155;
-}
 </style>
 """, unsafe_allow_html=True)
 
