@@ -80,80 +80,103 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 # ---------- LOGIN UI ----------
 auth_status = st.session_state.get("authentication_status")
 
-if auth_status is not True:
+if auth_status is None:
 
     st.markdown("""
     <style>
 
+    /* ===== BACKGROUND ===== */
     .stApp {
-        background: url("https://i.ibb.co/8gZz0qj/background.jpg") no-repeat center center fixed;
+        background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
         background-size: cover;
     }
 
     [data-testid="stAppViewContainer"] {
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.75);
     }
 
+    /* ===== REMOVE STREAMLIT HEADER ===== */
+    header {visibility: hidden;}
+
+    /* ===== TITLE BAR ===== */
+    .main-title {
+        text-align: center;
+        font-size: 36px;
+        font-weight: bold;
+        color: white;
+        padding: 15px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        background: rgba(0,0,0,0.6);
+        box-shadow: 0 0 20px rgba(0,150,255,0.4);
+    }
+
+    /* ===== LOGIN CARD ===== */
     .login-box {
-        width: 100%;
-        max-width: 320px;
+        width: 400px;
         margin: auto;
-        padding: 25px;
+        padding: 30px;
         border-radius: 15px;
         background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(10px);
-        text-align: center;
-        box-shadow: 0px 10px 40px rgba(0,0,0,0.8);
+        backdrop-filter: blur(12px);
+        box-shadow: 0px 0px 25px rgba(0,150,255,0.3);
     }
 
-    .subtitle {
-        color: #ccc;
-        margin-bottom: 15px;
-        font-size: 18px;
-    }
-
-    div[data-baseweb="input"] {
-        max-width: 260px;
-        margin: auto;
+    /* ===== INPUT FIX ===== */
+    div[data-baseweb="input"] > div {
+        background-color: rgba(255,255,255,0.95) !important;
+        border-radius: 10px;
     }
 
     div[data-baseweb="input"] input {
         color: black !important;
-        background: white !important;
-        border-radius: 10px;
-    }
-
-    .stButton > button {
-        max-width: 260px;
-        margin: auto;
-        display: block;
-        border-radius: 10px;
-        height: 40px;
-        background: linear-gradient(90deg,#00c6ff,#0072ff);
-        color: white;
-        font-weight: bold;
+        padding: 10px;
     }
 
     label {
         color: white !important;
+        font-weight: 500;
+    }
+
+    /* ===== BUTTON ===== */
+    .stButton>button {
+        width: 100%;
+        height: 45px;
+        border-radius: 10px;
+        background: linear-gradient(90deg,#00c6ff,#0072ff);
+        color: white;
+        font-weight: bold;
+        border: none;
+    }
+
+    /* ===== ADMIN TEXT ===== */
+    .admin-text {
+        text-align: center;
+        color: #ccc;
+        margin-bottom: 15px;
     }
 
     </style>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1,0.7,1])
+    # ===== TITLE =====
+    st.markdown("""
+    <div class='main-title'>
+        🔍 Missing Person Tracking System
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ===== CENTER LOGIN =====
+    col1, col2, col3 = st.columns([1,1.2,1])
 
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='subtitle'>🔐 Admin Login</div>", unsafe_allow_html=True)
 
-        # ✅ FIXED LOGIN (NO key, ONLY ONCE)
-        name, auth_status, username = authenticator.login("Login", "main")
+        st.markdown("<div class='admin-text'>🔐 Admin Login</div>", unsafe_allow_html=True)
 
-        if auth_status is False:
-            st.error("❌ Invalid Username or Password")
-        elif auth_status is None:
-            st.info("Enter your credentials")
+        name, auth_status, username = authenticator.login(
+            "Login", "main", key="login_form"
+        )
 
         st.markdown("</div>", unsafe_allow_html=True)
 
