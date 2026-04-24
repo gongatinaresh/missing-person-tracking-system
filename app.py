@@ -126,6 +126,7 @@ if st.session_state.get("authentication_status"):
     menu = st.sidebar.radio("Navigation", ["Dashboard", "Report", "Reports", "Detection"])
 
     # ---------------- DASHBOARD ----------------
+        # ---------------- DASHBOARD ----------------
     if menu == "Dashboard":
 
         df = pd.read_csv("missing_data.csv") if os.path.exists("missing_data.csv") else pd.DataFrame()
@@ -141,13 +142,19 @@ if st.session_state.get("authentication_status"):
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.image("temp/live.jpg") if os.path.exists("temp/live.jpg") else st.info("Live Image")
+            if os.path.exists("temp/live.jpg"):
+                st.image("temp/live.jpg")
+            else:
+                st.info("Live Image")
 
         with col2:
             st.success(st.session_state.get("status", "No Detection"))
 
         with col3:
-            st.image("temp/match.jpg") if os.path.exists("temp/match.jpg") else st.info("Matched Image")
+            if os.path.exists("temp/match.jpg"):
+                st.image("temp/match.jpg")
+            else:
+                st.info("Matched Image")
 
         st.line_chart(pd.DataFrame({"Accuracy":[60,70,75,80,85,90]}))
 
