@@ -68,73 +68,52 @@ if auth_status is None:
     <style>
 
     .stApp {
-        background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
+        background: url("https://i.ibb.co/8gZz0qj/background.jpg") no-repeat center center fixed;
         background-size: cover;
     }
 
     [data-testid="stAppViewContainer"] {
-        background: rgba(0,0,0,0.75);
+        background: rgba(0,0,0,0.7);
     }
 
-    header {visibility: hidden;}
-
-    /* ===== TITLE ===== */
-    .main-title {
-        text-align: center;
-        font-size: 30px;
-        font-weight: bold;
-        color: white;
-        margin-bottom: 20px;
-    }
-
-    /* ===== CENTER FIX ===== */
+    /* CENTER ENTIRE PAGE */
     .block-container {
         max-width: 400px;
         margin: auto;
+        padding-top: 100px;
     }
 
-    /* ===== LOGIN CARD ===== */
+    /* LOGIN CARD */
     .login-box {
-        padding: 20px;
-        border-radius: 12px;
+        padding: 25px;
+        border-radius: 15px;
         background: rgba(0,0,0,0.6);
         backdrop-filter: blur(10px);
         text-align: center;
     }
 
-    /* ===== INPUT CONTROL ===== */
-    div[data-baseweb="input"] {
-        width: 100% !important;
-    }
-
-    div[data-baseweb="input"] input {
-        color: black !important;
-    }
-
-    /* ===== BUTTON ===== */
-    .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 40px;
-        background: linear-gradient(90deg,#00c6ff,#0072ff);
-        color: white;
-    }
-
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='main-title'>🔍 Missing Person Tracking System</div>", unsafe_allow_html=True)
+    # TITLE
+    st.markdown(
+        "<h2 style='text-align:center;color:white;'>🔍 Missing Person Tracking System</h2>",
+        unsafe_allow_html=True
+    )
 
+    # LOGIN BOX
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
     name, auth_status, username = authenticator.login(
-        "Login",
-        "main",
-        key="login_form"
+        "Login", "main", key="login_form"
     )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+    st.stop()
+
+elif auth_status is False:
+    st.error("❌ Invalid Username or Password")
     st.stop()
 
 # ---------- AFTER LOGIN ----------
