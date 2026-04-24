@@ -121,15 +121,14 @@ if auth_status is None:
     col1, col2, col3 = st.columns([1,1.2,1])
 
     with col2:
-        st.markdown("<div class='login-box'>", unsafe_allow_html=True)
+    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
-        name, auth_status, username = authenticator.login(
-            "Login",
-            "main",
-            key="login_form"
-        )
+    name, auth_status, username = authenticator.login(
+        "Login",
+        "main"
+    )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.stop()
 
