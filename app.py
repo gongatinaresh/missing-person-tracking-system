@@ -6,26 +6,21 @@ import pandas as pd
 import os
 import cv2
 import numpy as np
-import base64
 import smtplib
 from email.message import EmailMessage
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
 st.set_page_config(layout="wide")
 
 # ---------- UI ----------
 st.markdown("""
 <style>
-
 .stApp {
     background: url("https://i.ibb.co/8gZz0qj/background.jpg") no-repeat center center fixed;
     background-size: cover;
 }
-
 [data-testid="stAppViewContainer"] {
     background: rgba(0,0,0,0.7);
 }
-
 .login-box {
     width: 350px;
     margin: auto;
@@ -35,20 +30,15 @@ st.markdown("""
     backdrop-filter: blur(10px);
     text-align: center;
 }
-
 div[data-baseweb="input"] > div {
     background-color: white !important;
 }
-
 div[data-baseweb="input"] input {
     color: black !important;
 }
-
 label {
     color: white !important;
-    font-weight: bold;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -79,32 +69,12 @@ if auth_status is None:
 
     st.markdown("""
     <style>
-    .stApp {
-        background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
-        background-size: cover;
-    }
-
-    [data-testid="stAppViewContainer"] {
-        background: rgba(0,0,0,0.75);
-    }
-
-    header {visibility: hidden;}
-
     .main-title {
-        text-align: center;
-        font-size: 34px;
-        font-weight: bold;
-        color: white;
-        margin-bottom: 20px;
-    }
-
-    .login-box {
-        width: 380px;
-        margin: auto;
-        padding: 25px;
-        border-radius: 15px;
-        background: rgba(0,0,0,0.6);
-        backdrop-filter: blur(10px);
+        text-align:center;
+        font-size:34px;
+        font-weight:bold;
+        color:white;
+        margin-bottom:20px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -143,26 +113,17 @@ def send_email(to_email, name, location, phone, image_path):
         msg["From"] = sender
         msg["To"] = to_email
 
-        body = f"""
+        msg.set_content(f"""
 ALERT: Missing Person Detected
 
 Name: {name}
-Last Seen Location: {location}
-Contact Number: {phone}
-
-The system has detected a possible match in live camera feed.
-Please verify immediately.
-"""
-        msg.set_content(body)
+Location: {location}
+Phone: {phone}
+""")
 
         if os.path.exists(image_path):
             with open(image_path, "rb") as f:
-                msg.add_attachment(
-                    f.read(),
-                    maintype="image",
-                    subtype="jpeg",
-                    filename=os.path.basename(image_path)
-                )
+                msg.add_attachment(f.read(), maintype="image", subtype="jpeg", filename="live.jpg")
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(sender, password)
@@ -174,10 +135,11 @@ Please verify immediately.
 # ---------- MAIN ----------
 if st.session_state.get("authentication_status"):
 
-    authenticator.logout("Logout","sidebar")
+    authenticator.logout("Logout", "sidebar")
 
-    menu = st.sidebar.radio("Navigation",["Dashboard","Report","Reports","Detection"])
+    menu = st.sidebar.radio("Navigation", ["Dashboard", "Report", "Reports", "Detection"])
 
+    # ---------- DASHBOARD ----------
     if menu == "Dashboard":
 
         if os.path.exists("missing_data.csv"):
@@ -186,22 +148,54 @@ if st.session_state.get("authentication_status"):
             df = pd.DataFrame()
 
         st.markdown("<h3 style='color:white;'>Dashboard</h3>", unsafe_allow_html=True)
+        st.write("Total Records:", len(df))
 
+    # ---------- REPORT ----------
     elif menu == "Report":
 
-        st.text_input("Name")
-        st.text_input("Phone")
-        st.text_input("Location")
-        st.file_uploader("Upload Image")
+        name = st.text_input("Name")
+        phone = st.text_input("Phone")
+        location = st.text_input("Location")
+        email = st.text_input("Email")
+        image = st.file_uploader("Upload Image")
 
+        if image:
+            st.image(image)
+
+        if st.button("Submit") and image:
+            os.makedirs("data", exist_ok=True)
+            path = f"data/{name}.jpg"
+
+            with open(path, "wb") as f:
+                f.write(image.getbuffer())
+
+            data = {
+                "Name": name,
+                "Image Path": path,
+                "Phone": phone,
+                "Location": location,
+                "Email": email
+            }
+
+            if os.path.exists("missing_data.csv"):
+                df = pd.read_csv("missing_data.csv")
+                df = pd.concat([df, pd.DataFrame([data])])
+            else:
+                df = pd.DataFrame([data])
+
+            df.to_csv("missing_data.csv", index=False)
+            st.success("Saved")
+
+    # ---------- REPORTS ----------
     elif menu == "Reports":
 
         if os.path.exists("missing_data.csv"):
             df = pd.read_csv("missing_data.csv")
             st.dataframe(df)
         else:
-            st.warning("No reports available")
+            st.warning("No data")
 
+    # ---------- DETECTION ----------
     elif menu == "Detection":
 
         st.subheader("📷 Live Detection")
