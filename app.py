@@ -137,7 +137,7 @@ if menu == "Dashboard":
             st.info("Live Image")
 
     with col2:
-        st.success(st.session_state.get("status", "No Detection"))
+        st.success(st.session_state.get("status", "face Detected"))
 
     with col3:
         if os.path.exists("temp/match.jpg"):
