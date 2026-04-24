@@ -63,8 +63,7 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 if "authentication_status" not in st.session_state:
     st.session_state["authentication_status"] = None
 
-# ✅ LOGIN CONTROL
-if st.session_state["authentication_status"] != True:
+if not st.session_state.get("authentication_status"):
 
     col1, col2, col3 = st.columns([1,2,1])
 
@@ -72,6 +71,9 @@ if st.session_state["authentication_status"] != True:
         st.markdown("<div class='card'><h3>🔍 Missing Person Tracking System</h3></div>", unsafe_allow_html=True)
 
         name, auth_status, username = authenticator.login("Login","main")
+
+        # 🔥 FIX: STORE RESULT
+        st.session_state["authentication_status"] = auth_status
 
     if auth_status is False:
         st.error("Invalid credentials")
