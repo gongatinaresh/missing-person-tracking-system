@@ -59,18 +59,23 @@ credentials = {
 
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
-col1, col2, col3 = st.columns([1, 2, 1])
+st.markdown("<h1 style='text-align:center;'>🔍 Missing Person Tracking System</h1>", unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns([1.5,1,1.5])
+
 with col2:
-    st.markdown("<div class='card'><h3>🧭 Missing Persons Tracking System</h3></div>", unsafe_allow_html=True)
-    name, auth_status, username = authenticator.login("Login", "main")
+    st.markdown("""
+    <div style="
+        background: rgba(255,255,255,0.08);
+        padding: 25px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+    ">
+    """, unsafe_allow_html=True)
 
-if auth_status:
-    st.success(f"Welcome {name}")
-elif auth_status is False:
-    st.error("Invalid credentials")
-else:
-    st.warning("Please login")
+    name, auth_status, username = authenticator.login("Login","main")
 
+    st.markdown("</div>", unsafe_allow_html=True)
 # ---------- EMAIL ----------
 def send_email(to_email, name, location, phone, image_path):
     try:
