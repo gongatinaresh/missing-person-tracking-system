@@ -60,26 +60,28 @@ credentials = {
 authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 # ✅ SESSION FIX
-if "authentication_status" not in st.session_state:
-    st.session_state["authentication_status"] = None
+# ---------- SIMPLE LOGIN (STABLE) ----------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
 
-if not st.session_state.get("authentication_status"):
+if not st.session_state.logged_in:
 
-    col1, col2, col3 = st.columns([1,2,1])
+    st.markdown(
+        "<h2 style='text-align:center;'>🔍 Missing Person Tracking System</h2>",
+        unsafe_allow_html=True
+    )
 
-    with col2:
-        st.markdown("<div class='card'><h3>🔍 Missing Person Tracking System</h3></div>", unsafe_allow_html=True)
+    username = st.text_input("Username", key="user")
+    password = st.text_input("Password", type="password", key="pass")
 
-        name, auth_status, username = authenticator.login("Login","main")
+    if st.button("Login"):
+        if username == "admin" and password == "1234":
+            st.session_state.logged_in = True
+            st.rerun()
+        else:
+            st.error("Invalid Username or Password")
 
-        # 🔥 FIX: STORE RESULT
-        st.session_state["authentication_status"] = auth_status
-
-    if auth_status is False:
-        st.error("Invalid credentials")
-    elif auth_status is None:
-        st.warning("Please login")
-
+    # ❗ IMPORTANT: STOP ONLY HERE
     st.stop()
 
 # ---------- EMAIL ----------
