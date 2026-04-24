@@ -96,31 +96,52 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 auth_status = st.session_state.get("authentication_status")
 
 # ---------- LOGIN ----------
-name, auth_status, username = None, None, None
+if auth_status is None:
 
-col1, col2, col3 = st.columns([1,1.2,1])
+    st.markdown("""
+    <style>
 
-with col2:
-    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
+    .stApp {
+        background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
+        background-size: cover;
+    }
 
-    st.markdown("<div class='title'>🧭 Missing Person System</div>", unsafe_allow_html=True)
-    st.markdown("<div class='subtitle'>Secure Admin Login</div>", unsafe_allow_html=True)
+    /* Dark overlay for readability */
+    [data-testid="stAppViewContainer"] {
+        background: rgba(0,0,0,0.7);
+    }
 
-    name, auth_status, username = authenticator.login("Login","main")
+    .login-box {
+        width: 350px;
+        margin: auto;
+        padding: 25px;
+        border-radius: 15px;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(10px);
+        text-align: center;
+        box-shadow: 0px 10px 40px rgba(0,0,0,0.8);
+    }
 
-    if auth_status is False:
-        st.error("❌ Invalid Username or Password")
+    .subtitle {
+        color: #ccc;
+        margin-bottom: 20px;
+        font-size: 18px;
+    }
 
-    elif auth_status is None:
-        st.info("Enter your credentials")
+    </style>
+    """, unsafe_allow_html=True)
 
-    elif auth_status:
-        st.success(f"Welcome {name}")
+    col1, col2, col3 = st.columns([1,1.2,1])
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown("<div class='login-box'>", unsafe_allow_html=True)
 
-# 🚫 STOP APP UNTIL LOGIN SUCCESS
-if not auth_status:
+        st.markdown("<div class='subtitle'>Admin Login</div>", unsafe_allow_html=True)
+
+        name, auth_status, username = authenticator.login("Login","main")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
     st.stop()
 # ---------- EMAIL ----------
 def send_email(to_email, name, location, phone, image_path):
