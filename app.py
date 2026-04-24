@@ -78,26 +78,22 @@ authenticator = stauth.Authenticate(credentials, "app", "key", 30)
 
 # ✅ PASTE HERE 👇
 # ---------- LOGIN UI ----------
-name, auth_status, username = authenticator.login("Login","main")
+auth_status = st.session_state.get("authentication_status")
 
-# 🔴 STOP if not logged in
 if auth_status is not True:
 
     st.markdown("""
     <style>
 
-    /* Background */
     .stApp {
         background: url("https://www.image2url.com/r2/default/images/1777004946995-2d9a1d91-03d5-4d08-a0b7-b7811a0202cd.jpeg") no-repeat center center fixed;
         background-size: cover;
     }
 
-    /* Dark overlay */
     [data-testid="stAppViewContainer"] {
         background: rgba(0,0,0,0.7);
     }
 
-    /* Login card */
     .login-box {
         width: 100%;
         max-width: 320px;
@@ -110,14 +106,12 @@ if auth_status is not True:
         box-shadow: 0px 10px 40px rgba(0,0,0,0.8);
     }
 
-    /* Subtitle */
     .subtitle {
         color: #ccc;
         margin-bottom: 15px;
         font-size: 18px;
     }
 
-    /* 🔥 Fix input width */
     div[data-baseweb="input"] {
         max-width: 260px;
         margin: auto;
@@ -129,7 +123,6 @@ if auth_status is not True:
         border-radius: 10px;
     }
 
-    /* Button style */
     .stButton > button {
         max-width: 260px;
         margin: auto;
@@ -141,7 +134,6 @@ if auth_status is not True:
         font-weight: bold;
     }
 
-    /* Labels */
     label {
         color: white !important;
     }
@@ -149,20 +141,19 @@ if auth_status is not True:
     </style>
     """, unsafe_allow_html=True)
 
-    # 🔥 CENTER LOGIN BOX
     col1, col2, col3 = st.columns([1,0.7,1])
 
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-
         st.markdown("<div class='subtitle'>🔐 Admin Login</div>", unsafe_allow_html=True)
 
-        # 🔥 LOGIN FORM
-        name, auth_status, username = authenticator.login("Login","main")
+        # ✅ ONLY ONE LOGIN CALL
+        name, auth_status, username = authenticator.login(
+            "Login", "main", key="login_form"
+        )
 
         if auth_status is False:
             st.error("❌ Invalid Username or Password")
-
         elif auth_status is None:
             st.info("Enter your credentials")
 
